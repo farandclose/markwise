@@ -2,21 +2,32 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { lintText } from './lint.js';
 import { fixText } from './fix.js';
+import { status, type StatusReport } from './status.js';
+import { buildPromptOutput } from './prompt.js';
+import { stripText } from './strip.js';
 import type { Finding } from './types.js';
 
 const USAGE = `markwise - a human-agent review layer for markdown
 
 Usage:
   markwise lint <file...> [--fix] [--strict] [--json]
+  markwise status <file...> [--json]
+  markwise prompt <file> [--author]
+  markwise export <file> [--output <path>]   (alias: strip)
 
 Options:
-  --fix      Repair mechanical anchor fields (hash, before/after) in place. Never edits prose.
-  --strict   Treat warnings as failures (non-zero exit).
-  --json     Emit findings as JSON instead of text.
-  -h, --help Show this help.
+  --fix             Repair mechanical anchor fields (hash, before/after) in place. Never edits prose.
+  --strict          Treat warnings as failures (non-zero exit).
+  --json            Emit output as JSON instead of text.
+  --author          prompt: emit the note-authoring block instead of the revise/respond block.
+  -o, --output <p>  export: write the clean copy to <p> instead of stdout.
+  -h, --help        Show this help.
+
+Notes:
+  export/strip removes all Markwise data and writes a clean copy. It NEVER modifies the original.
 
 Exit codes:
-  0  clean (or only warnings, without --strict)
+  0  clean (or only warnings, without --strict); status/export always exit 0 on success
   1  one or more errors (or warnings with --strict)
   2  usage error / file not found
 `;
@@ -27,16 +38,31 @@ interface Args {
   fix: boolean;
   strict: boolean;
   json: boolean;
+  author: boolean;
+  output: string | null;
   help: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { command: null, files: [], fix: false, strict: false, json: false, help: false };
-  for (const a of argv) {
+  const args: Args = {
+    command: null,
+    files: [],
+    fix: false,
+    strict: false,
+    json: false,
+    author: false,
+    output: null,
+    help: false,
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]!;
     if (a === '--fix') args.fix = true;
     else if (a === '--strict') args.strict = true;
     else if (a === '--json') args.json = true;
+    else if (a === '--author') args.author = true;
     else if (a === '-h' || a === '--help') args.help = true;
+    else if (a === '-o' || a === '--output') args.output = argv[++i] ?? null;
+    else if (a.startsWith('--output=')) args.output = a.slice('--output='.length);
     else if (a.startsWith('-')) {
       process.stderr.write(`markwise: unknown option ${a}\n`);
       process.exit(2);
@@ -131,6 +157,116 @@ function lintCommand(args: Args): number {
   return 0;
 }
 
+function formatStatus(file: string, r: StatusReport): string {
+  const lines: string[] = [];
+  lines.push(`${file}: ${r.open} open, ${r.resolved} resolved (${r.total} total)`);
+
+  lines.push('');
+  lines.push(`  Waiting on you (${r.waitingOnYou.length}):`);
+  if (r.waitingOnYou.length === 0) lines.push('    nothing needs your input right now');
+  else for (const n of r.waitingOnYou) lines.push(`    ${n.id}  ${n.type.padEnd(8)} ${n.reason}`);
+
+  lines.push('');
+  lines.push(`  Waiting on the agent (${r.waitingOnAgent.length}):`);
+  if (r.waitingOnAgent.length === 0) lines.push('    nothing pending for the agent');
+  else for (const n of r.waitingOnAgent) lines.push(`    ${n.id}  ${n.type.padEnd(8)} ${n.reason}`);
+
+  if (r.needsClarification > 0) {
+    lines.push('');
+    lines.push(`  ${r.needsClarification} of those need your answer (the agent asked a question).`);
+  }
+  return lines.join('\n');
+}
+
+function statusCommand(args: Args): number {
+  if (args.files.length === 0) {
+    process.stderr.write('markwise status: no input file\n');
+    return 2;
+  }
+
+  const jsonOut: Array<{ file: string; status: StatusReport }> = [];
+  for (const file of args.files) {
+    let source: string;
+    try {
+      source = readFileSync(file, 'utf8');
+    } catch {
+      process.stderr.write(`markwise: cannot read ${file}\n`);
+      return 2;
+    }
+    const report = status(source);
+    if (args.json) jsonOut.push({ file, status: report });
+    else process.stdout.write(formatStatus(file, report) + '\n');
+  }
+
+  if (args.json) process.stdout.write(JSON.stringify(jsonOut, null, 2) + '\n');
+  return 0;
+}
+
+function promptCommand(args: Args): number {
+  if (args.files.length !== 1) {
+    process.stderr.write('markwise prompt: expects exactly one input file\n');
+    return 2;
+  }
+  const file = args.files[0]!;
+
+  let document: string;
+  try {
+    document = readFileSync(file, 'utf8');
+  } catch {
+    process.stderr.write(`markwise: cannot read ${file}\n`);
+    return 2;
+  }
+
+  const templateFile = args.author ? 'AUTHOR_PROMPT.md' : 'AGENT_PROMPT.md';
+  let template: string;
+  try {
+    template = readFileSync(new URL(`../${templateFile}`, import.meta.url), 'utf8');
+  } catch {
+    process.stderr.write(`markwise: cannot find ${templateFile} in the package\n`);
+    return 2;
+  }
+
+  // In revise/respond mode, point the agent at the notes that are its turn (reviewer spoke last).
+  const waitingOnAgent = args.author
+    ? undefined
+    : status(document).waitingOnAgent.map((n) => ({ id: n.id, type: n.type }));
+
+  const now = new Date().toISOString();
+  process.stdout.write(buildPromptOutput({ template, document, now, waitingOnAgent }) + '\n');
+  return 0;
+}
+
+function exportCommand(args: Args): number {
+  if (args.files.length !== 1) {
+    process.stderr.write('markwise export: expects exactly one input file\n');
+    return 2;
+  }
+  const file = args.files[0]!;
+
+  let source: string;
+  try {
+    source = readFileSync(file, 'utf8');
+  } catch {
+    process.stderr.write(`markwise: cannot read ${file}\n`);
+    return 2;
+  }
+
+  const clean = stripText(source);
+
+  if (args.output) {
+    try {
+      writeFileSync(args.output, clean, 'utf8');
+    } catch {
+      process.stderr.write(`markwise: cannot write ${args.output}\n`);
+      return 2;
+    }
+    process.stderr.write(`Wrote clean copy to ${args.output} (original untouched)\n`);
+  } else {
+    process.stdout.write(clean);
+  }
+  return 0;
+}
+
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
   if (args.help || args.command === null) {
@@ -139,6 +275,15 @@ function main(): void {
   }
   if (args.command === 'lint') {
     process.exit(lintCommand(args));
+  }
+  if (args.command === 'status') {
+    process.exit(statusCommand(args));
+  }
+  if (args.command === 'prompt') {
+    process.exit(promptCommand(args));
+  }
+  if (args.command === 'export' || args.command === 'strip') {
+    process.exit(exportCommand(args));
   }
   process.stderr.write(`markwise: unknown command "${args.command}"\n\n${USAGE}`);
   process.exit(2);

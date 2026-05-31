@@ -2,3 +2,7 @@ temp-responses.md
 node_modules/
 dist/
 *.log
+
+# Transient session / harness artifacts (not project source)
+.superpowers/
+.claude/settings.json

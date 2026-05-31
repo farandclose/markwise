@@ -7,7 +7,9 @@
     "markwise": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "AGENT_PROMPT.md",
+    "AUTHOR_PROMPT.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

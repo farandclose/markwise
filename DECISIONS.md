@@ -641,12 +641,22 @@ Code layout: `src/parse.ts` (tolerant parser -> descriptive model), `src/lint.ts
 Builds on D1, D16, D20, D21, D39; closes open questions #2 and #7.
 
 * * *
+### D41 - CLI surface built: `status`, `prompt`, `export`; export strips all and never touches the original (2026-05-31)
+`status`, `prompt`, and `export` are now implemented in TypeScript/Node alongside `lint`, each a thin CLI wrapper over a pure `string -> data` core module (the D40 reusable-core discipline), built test-first.
+
+- **`status`** (`src/status.ts`): open/resolved counts plus the D34 "who spoke last" turn split - **waiting on you** (agent responded; resolve or push back) vs **waiting on the agent** (brand-new note, or you replied on top of the agent's action), with `needs_clarification` surfaced as "needs your answer". `disp` only flavors the reason text; the turn is decided purely by who spoke last. Always exits 0 (informational).
+- **`prompt`** (`src/prompt.ts`): emits the `AGENT_PROMPT.md` block (or `AUTHOR_PROMPT.md` with `--author`) with `<CURRENT_TIME>` filled in, a list of the notes waiting on the agent, then the document - one bundle to hand any model. The instruction templates stay canonical in the `.md` files (added to the package `files`); the CLI fills them, it does not own them. The timestamp is injected into the pure builder so it stays testable.
+- **`export` / `strip`** (`src/strip.ts`): resolves the **CLI half of open Q5**. Removes ALL Markwise data (both blocks plus every inline marker, keeping the wrapped prose) and writes the clean copy to stdout or `--output`. It **never modifies the original**, so it cannot destroy review state - the safe-by-default sharing workflow D10 asked for. The previewer-warning half of open Q5 (warn when hidden feedback remains) stays deferred with the previewer (D40).
+
+Test count 38 -> 52 (status / prompt / strip each with their own fixtures). Builds on D7, D10, D11, D20, D34, D40; resolves the CLI portion of open Q5.
+
+* * *
 ## Open questions / next steps
 
 ### Immediate next step (2026-05-31)
 **DONE - `markwise lint` is built and green (see D39).** All 24 rules (`L101`-`L304`) are implemented in TypeScript/Node with one broken-file fixture per rule plus a clean `sample.md` integration test and `--fix` round-trip tests (37 tests passing). `markwise lint <file> [--fix] [--strict] [--json]` runs with severity-based exit codes (D37). _Original plan (kept for the record):_ start with a broken-file test fixture per rule so the spec is validated as the code is written and `lint` has a test harness from line one.
 
-**Next:** `status` output format (which notes are "waiting on you" per D34's who-spoke-last engine), then `export`/`strip` safety defaults (open Q5), then `prompt` wiring (emit `AGENT_PROMPT.md` / `AUTHOR_PROMPT.md` ahead of the doc with `<CURRENT_TIME>` filled in).
+**Next:** ~~`status` output format, then `export`/`strip` safety defaults (open Q5), then `prompt` wiring.~~ **DONE - all three built (see D41); 52 tests passing.** The CLI surface (`lint` / `status` / `prompt` / `export`) is complete. **Next is the web previewer** (D40: read-only web view first); compact before starting it.
 
 1. **Operations walkthrough (next):** enumerate every operation markwise must support (create comment, reply, change state, agent-responds, resolve, suggested-edit accept/reject, render, export, lint, status...) and verify the HTML-comment format cleanly handles each one. _Design the minimal_ `mw:` _schema to serve the operations - don't design the schema in a vacuum._
   
@@ -665,7 +675,7 @@ Builds on D1, D16, D20, D21, D39; closes open questions #2 and #7.
 2. **Footer schema:** should the footer contain one encoded JSON index, one comment record per item, or a hybrid? The answer should follow from the operation model.
 3. **Selector recovery:** what exact selector fields and matching algorithm are good enough for v1?
 4. **Closure semantics:** how should the UI and CLI present `agent_disposition` versus `review_state` so humans do not mistake "agent applied" for "reviewer resolved"?
-5. **Export safety:** should `markwise export` default to stripping all Markwise data, and should the previewer warn when hidden feedback remains in a file intended for sharing?
+5. **Export safety:** ~~should `markwise export` default to stripping all Markwise data, and should the previewer warn when hidden feedback remains in a file intended for sharing?~~ **CLI half resolved by D41 (2026-05-31): export strips all data, writes to stdout/`--output`, never touches the original. Previewer-warning half stays deferred with the previewer (D40).**
 6. **Roughdraft interop:** which subset of Roughdraft-flavored CriticMarkup should Markwise import/export first?
 7. **Previewer surface:** ~~should v1 be a terminal-launched local web view first, following Roughdraft's proven workflow, before considering a VS Code extension or desktop app?~~ **Resolved by D40 (2026-05-31): yes - web view first, VS Code deferred.**
 

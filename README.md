@@ -15,8 +15,7 @@ previews.
 | Surface | State |
 |---------|-------|
 | Protocol + schema | locked, dry-run validated |
-| `markwise lint` | **built** (this README) |
-| `markwise status` / `prompt` / `export` | planned |
+| `markwise lint` / `status` / `prompt` / `export` | **built** (this README) |
 | Web previewer | planned (read-only view first) |
 
 ## Install / build
@@ -66,6 +65,47 @@ sample.md: clean
 
 The full list of checks (24 rules across structural integrity, anchor health, and lifecycle
 consistency) is in `LINT_SPEC.md`. Each rule has a stable id (`L101`-`L304`) referenced in output.
+
+## `markwise status`
+
+A human-facing summary of where a review stands. It counts open vs resolved notes and, using the
+"who spoke last" rule, tells you whose turn each open note is on.
+
+```bash
+node dist/cli.js status <file...> [--json]
+```
+
+- **Waiting on you** - the agent has responded; you resolve or push back. (Notes where the agent
+  asked a question are also flagged as needing your answer.)
+- **Waiting on the agent** - a brand-new note, or you replied on top of the agent's last action.
+
+`status` is informational and always exits `0`.
+
+## `markwise prompt`
+
+Emits the model-agnostic instruction block for an agent (with the current timestamp filled in),
+the list of notes currently waiting on the agent, then the document - a single bundle you can hand
+to any model.
+
+```bash
+node dist/cli.js prompt <file> [--author]
+```
+
+- default: the revise-and-respond block (`AGENT_PROMPT.md`).
+- `--author`: the note-authoring block (`AUTHOR_PROMPT.md`), for turning plain feedback into notes.
+
+## `markwise export` (alias `strip`)
+
+Produces a clean, shareable copy with all Markwise data removed (the blocks and every inline marker;
+the wrapped prose stays). Because `mw:` comments are invisible in normal preview, this is the safe
+way to share a file without leaking hidden review feedback.
+
+```bash
+node dist/cli.js export <file>                 # clean copy to stdout
+node dist/cli.js export <file> -o clean.md      # clean copy to a new file
+```
+
+It **never modifies the original** - the clean copy goes to stdout or `--output`.
 
 ## Tests
 
