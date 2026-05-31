@@ -1,1 +1,4 @@
 temp-responses.md
+node_modules/
+dist/
+*.log

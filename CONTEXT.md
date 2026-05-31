@@ -37,7 +37,7 @@ _Avoid_: author (acceptable informally, but "agent" is canonical), bot, AI (too 
 
 ### Operations
 
-The core verbs are **orthogonal** - each acts on a different part of a note, and an agent composes them as the note requires. There is deliberately *no* separate "accept / reject a suggested edit" verb; that collapses into **resolve** / **reopen**.
+The core verbs are **orthogonal** - each acts on a different part of a note, and an agent composes them as the note requires. There is deliberately *no* separate "accept / reject a suggested edit" verb; that collapses into **resolve** (DECISIONS D34: resolve is the single closing act).
 
 **Revise**:
 The agent changes the document's **prose**. Triggered by any note that needs a text change (a suggested edit, or a comment asking for one). Does not include answering in the thread.
@@ -48,13 +48,15 @@ Add a message to a note's **thread**. This is how a comment is *answered*, a dec
 _Avoid_: "comment" as a verb, "respond" (reserve for the loop as a whole).
 
 **Set disposition**:
-The agent records what it did with a note on its own state axis: `applied` / `declined` / `needs_clarification`. (Agent-owned; DECISIONS D11.)
+The agent records what it did with a note on its own state axis: `applied` (changed the prose) / `answered` (replied with no prose change - for a discussion-only comment) / `declined` / `needs_clarification`. The value follows the *action*, not the note type. (Agent-owned; DECISIONS D11, D35.)
+
+**Blast radius**:
+The set of *other* open notes whose anchors fall inside the region a single revise rewrites. A revise is **region-scoped, not note-scoped**: before a large rewrite the agent must sweep the blast radius and explicitly honor, decline, surface (as `needs_clarification`), or re-anchor every note in it - never silently orphan or contradict one. (DECISIONS D25.)
+_Avoid_: "affected area", "overlap" (overlap is about spans sharing text; blast radius is about a rewrite's reach).
 
 **Resolve**:
-The reviewer closes a note, accepting the outcome. For a suggested edit, **resolve = accept**. Mechanics in DECISIONS D19.
-
-**Reopen**:
-The reviewer bounces a resolved note back for another pass. For a suggested edit, **reopen = reject-and-ask-again**. Resets `agent_disposition` to `none` (DECISIONS D19).
+The reviewer closes a note, accepting the outcome. For a suggested edit, **resolve = accept**. Resolve is **terminal** - there is no reopen (DECISIONS D34); a resolved note is archived (mechanics in DECISIONS D19) and never returns to active. Iteration on a note happens *before* resolve, while it is still **open**: the reviewer replies and the agent acts again (the loop is driven by who spoke last in the thread). To revisit something already resolved, create a **new note**.
+_Avoid_: "reopen" (removed in D34), "close" (acceptable informally, but **resolve** is canonical).
 
 ### Informal words
 
