@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import type { AddressInfo } from 'node:net';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Server } from 'node:http';
@@ -35,6 +35,14 @@ async function start(doc: string): Promise<string> {
   return `http://127.0.0.1:${port}`;
 }
 
+async function post(base: string, path: string, body?: unknown): Promise<Response> {
+  return fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: body === undefined ? {} : { 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
 describe('createPreviewServer', () => {
   it('serves the current file as JSON at /api/doc', async () => {
     const base = await start(DOC);
@@ -59,6 +67,48 @@ describe('createPreviewServer', () => {
   it('404s an unknown path', async () => {
     const base = await start(DOC);
     const res = await fetch(`${base}/nope.txt`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('mutation endpoints', () => {
+  it('POST /api/note/:id/reply appends a reviewer message and returns the fresh payload', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note/s1/reply', { body: 'Looks good.' });
+    expect(res.status).toBe(200);
+    const payload = await res.json();
+    const note = payload.notes.find((n: { id: string }) => n.id === 's1');
+    const last = note.thread[note.thread.length - 1];
+    expect(last.by).toBe('reviewer');
+    expect(last.body).toBe('Looks good.');
+    // The on-disk file reflects the change.
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).toContain('Looks good.');
+  });
+
+  it('POST /api/note/:id/resolve strips the note and drops the open count', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note/s1/resolve');
+    expect(res.status).toBe(200);
+    const payload = await res.json();
+    expect(payload.openCount).toBe(0);
+    expect(payload.html).not.toContain('data-mw-id="s1"');
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).toContain('<!-- mw:archive v=1');
+    expect(onDisk).not.toContain('mw:s1');
+  });
+
+  it('rejects an empty reply body and leaves the file untouched', async () => {
+    const base = await start(DOC);
+    const before = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    const res = await post(base, '/api/note/s1/reply', { body: '   ' });
+    expect(res.status).toBe(400);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
+  });
+
+  it('404s a reply to an unknown note id', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note/nope/reply', { body: 'hi' });
     expect(res.status).toBe(404);
   });
 });
