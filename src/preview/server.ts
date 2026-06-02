@@ -26,8 +26,12 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', (chunk) => {
+      if (data.length > 1_000_000) {
+        reject(new NoteMutationError('request body too large', 413));
+        req.destroy();
+        return;
+      }
       data += chunk;
-      if (data.length > 1_000_000) reject(new NoteMutationError('request body too large', 413));
     });
     req.on('end', () => {
       if (data.trim() === '') return resolve({});

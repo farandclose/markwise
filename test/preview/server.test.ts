@@ -111,4 +111,23 @@ describe('mutation endpoints', () => {
     const res = await post(base, '/api/note/nope/reply', { body: 'hi' });
     expect(res.status).toBe(404);
   });
+
+  it('refuses to write (422) and leaves the file untouched when the result would not lint', async () => {
+    const BAD = [
+      '# Demo',
+      '',
+      'Ships by <!-- mw:s1 -->Q3<!-- /mw:s1 -->.',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"s1","type":"replace","state":"open","disp":"none","anchor":{"kind":"span","hash":"0","before":"by ","after":"."},"text":"Q4","thread":[]}',
+      '{"id":"s1","type":"comment","state":"open","disp":"none","anchor":{"kind":"point","before":".","after":""},"thread":[]}',
+      '-->',
+      '',
+    ].join('\n');
+    const base = await start(BAD);
+    const before = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    const res = await post(base, '/api/note/s1/reply', { body: 'hi' });
+    expect(res.status).toBe(422);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
+  });
 });
