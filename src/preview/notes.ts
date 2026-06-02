@@ -1,14 +1,15 @@
 import { parse } from '../parse.js';
 import type { NoteType, ReviewState, Disposition, AnchorKind, ThreadMessage } from '../types.js';
+import { NOTE_TYPES, REVIEW_STATES, DISPOSITIONS } from '../types.js';
 import type { NoteView } from './types.js';
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
-const NOTE_TYPES: readonly string[] = ['comment', 'insert', 'delete', 'replace'];
-const STATES: readonly string[] = ['open', 'resolved'];
-const DISPS: readonly string[] = ['none', 'applied', 'answered', 'declined', 'needs_clarification'];
+const noteTypes: readonly string[] = NOTE_TYPES;
+const reviewStates: readonly string[] = REVIEW_STATES;
+const dispositions: readonly string[] = DISPOSITIONS;
 
 function toThread(v: unknown): ThreadMessage[] {
   if (!Array.isArray(v)) return [];
@@ -49,9 +50,9 @@ export function extractNotes(source: string): NoteView[] {
       const id = str(o.id);
       if (id === undefined) continue;
 
-      const type: NoteType = NOTE_TYPES.includes(str(o.type) ?? '') ? (o.type as NoteType) : 'comment';
-      const state: ReviewState = STATES.includes(str(o.state) ?? '') ? (o.state as ReviewState) : 'open';
-      const disp: Disposition = DISPS.includes(str(o.disp) ?? '') ? (o.disp as Disposition) : 'none';
+      const type: NoteType = noteTypes.includes(str(o.type) ?? '') ? (o.type as NoteType) : 'comment';
+      const state: ReviewState = reviewStates.includes(str(o.state) ?? '') ? (o.state as ReviewState) : 'open';
+      const disp: Disposition = dispositions.includes(str(o.disp) ?? '') ? (o.disp as Disposition) : 'none';
       const anchorKind: AnchorKind =
         isObj(o.anchor) && str(o.anchor.kind) === 'point' ? 'point' : 'span';
       const text = str(o.text);
