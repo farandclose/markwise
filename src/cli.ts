@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, accessSync, constants } from 'node:fs';
+import { spawn } from 'node:child_process';
 import { lintText } from './lint.js';
 import { fixText } from './fix.js';
 import { status, type StatusReport } from './status.js';
 import { buildPromptOutput } from './prompt.js';
 import { stripText } from './strip.js';
-import { spawn } from 'node:child_process';
 import { createPreviewServer } from './preview/server.js';
 import type { Finding } from './types.js';
 
@@ -294,7 +294,7 @@ function previewCommand(args: Args): void {
   }
   const file = args.files[0]!;
   try {
-    readFileSync(file, 'utf8');
+    accessSync(file, constants.R_OK);
   } catch {
     process.stderr.write(`markwise: cannot read ${file}\n`);
     process.exit(2);
