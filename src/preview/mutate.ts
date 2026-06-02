@@ -30,11 +30,11 @@ export function appendReply(source: string, id: string, body: string, at: string
   if (!rec || !isObj(rec.json)) throw new NoteMutationError(`note not found: ${id}`, 404);
 
   const obj = rec.json;
-  const thread = Array.isArray(obj.thread) ? (obj.thread as ThreadMessage[]) : [];
+  const existing: unknown[] = Array.isArray(obj.thread) ? obj.thread : [];
   const message: ThreadMessage = { by: 'reviewer', at, body: text };
-  obj.thread = [...thread, message];
+  const updated = { ...obj, thread: [...existing, message] };
 
   const lines = [...doc.lines];
-  lines[rec.line - 1] = JSON.stringify(obj);
+  lines[rec.line - 1] = JSON.stringify(updated);
   return lines.join('\n');
 }

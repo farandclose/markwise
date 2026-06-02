@@ -25,6 +25,29 @@ describe('appendReply', () => {
     expect(() => appendReply(DOC, 's1', '   ', '2026-06-02T12:00:00Z')).toThrow(NoteMutationError);
   });
 
+  it('trims surrounding whitespace from the stored body', () => {
+    const out = appendReply(DOC, 's1', '  ok  ', '2026-06-02T12:00:00Z');
+    const rec = JSON.parse(out.split('\n').find((l) => l.trim().startsWith('{"id":"s1"'))!);
+    expect(rec.thread[rec.thread.length - 1].body).toBe('ok');
+  });
+
+  it('creates a thread when the record has none', () => {
+    const NO_THREAD = [
+      '# Demo',
+      '',
+      'Done.<!-- mw:p1 -->',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"p1","type":"comment","state":"open","disp":"none","anchor":{"kind":"point","before":".","after":""}}',
+      '-->',
+      '',
+    ].join('\n');
+    const out = appendReply(NO_THREAD, 'p1', 'first reply', '2026-06-02T12:00:00Z');
+    const rec = JSON.parse(out.split('\n').find((l) => l.trim().startsWith('{"id":"p1"'))!);
+    expect(rec.thread).toHaveLength(1);
+    expect(rec.thread[0]).toEqual({ by: 'reviewer', at: '2026-06-02T12:00:00Z', body: 'first reply' });
+  });
+
   it('rejects an unknown note id with a 404 status', () => {
     try {
       appendReply(DOC, 'nope', 'hi', '2026-06-02T12:00:00Z');
