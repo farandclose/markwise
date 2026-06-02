@@ -126,7 +126,8 @@
       resolveBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         resolveBtn.disabled = true;
-        send('/api/note/' + encodeURIComponent(note.id) + '/resolve', null);
+        send('/api/note/' + encodeURIComponent(note.id) + '/resolve', null)
+          .finally(function () { resolveBtn.disabled = false; });
       });
 
       verbs.appendChild(replyBtn);
