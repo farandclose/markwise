@@ -5,6 +5,8 @@ import { fixText } from './fix.js';
 import { status, type StatusReport } from './status.js';
 import { buildPromptOutput } from './prompt.js';
 import { stripText } from './strip.js';
+import { spawn } from 'node:child_process';
+import { createPreviewServer } from './preview/server.js';
 import type { Finding } from './types.js';
 
 const USAGE = `markwise - a human-agent review layer for markdown
@@ -14,6 +16,7 @@ Usage:
   markwise status <file...> [--json]
   markwise prompt <file> [--author]
   markwise export <file> [--output <path>]   (alias: strip)
+  markwise preview <file>                    open the document in a local web previewer
 
 Options:
   --fix             Repair mechanical anchor fields (hash, before/after) in place. Never edits prose.
@@ -267,11 +270,60 @@ function exportCommand(args: Args): number {
   return 0;
 }
 
+function openBrowser(url: string): void {
+  // Best-effort. Failure is non-fatal: the URL is already printed for the reviewer to open.
+  const cmd =
+    process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
+  try {
+    const child = spawn(cmd, [url], {
+      stdio: 'ignore',
+      detached: true,
+      shell: process.platform === 'win32',
+    });
+    child.on('error', () => {});
+    child.unref();
+  } catch {
+    /* ignore */
+  }
+}
+
+function previewCommand(args: Args): void {
+  if (args.files.length !== 1) {
+    process.stderr.write('markwise preview: expects exactly one input file\n');
+    process.exit(2);
+  }
+  const file = args.files[0]!;
+  try {
+    readFileSync(file, 'utf8');
+  } catch {
+    process.stderr.write(`markwise: cannot read ${file}\n`);
+    process.exit(2);
+  }
+
+  const server = createPreviewServer(file);
+  server.on('error', (err) => {
+    process.stderr.write(`markwise preview: server error: ${(err as Error).message}\n`);
+    process.exit(1);
+  });
+  server.listen(0, '127.0.0.1', () => {
+    const addr = server.address();
+    const port = typeof addr === 'object' && addr ? addr.port : 0;
+    const url = `http://127.0.0.1:${port}/`;
+    process.stdout.write(`markwise preview: serving ${file}\n  ${url}\n  (Ctrl+C to stop)\n`);
+    openBrowser(url);
+  });
+  // Intentionally does not return / exit: the listening server keeps the event loop alive.
+}
+
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
   if (args.help || args.command === null) {
     process.stdout.write(USAGE);
     process.exit(args.command === null && !args.help ? 2 : 0);
+  }
+  if (args.command === 'preview') {
+    previewCommand(args);
+    return; // long-running; do not process.exit
   }
   if (args.command === 'lint') {
     process.exit(lintCommand(args));
