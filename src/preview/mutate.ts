@@ -50,6 +50,7 @@ function deriveSummary(thread: unknown): string {
       : '';
   const oneLine = first.replace(/\s+/g, ' ').trim();
   if (oneLine === '') return 'Resolved';
+  // slice(0, 79): 79 + the 1-char ellipsis keeps the summary within 80 chars.
   return oneLine.length > 80 ? oneLine.slice(0, 79).trimEnd() + '…' : oneLine;
 }
 

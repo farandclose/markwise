@@ -152,7 +152,7 @@ describe('resolveNote', () => {
     ].join('\n');
     const out = resolveNote(LONG, 'p1', '2026-06-02T12:00:00Z');
     const arc = JSON.parse(out.split('\n').find((l) => l.trim().startsWith('{"id":"p1"'))!);
-    expect(arc.summary.length).toBe(80);
+    expect(arc.summary.length).toBeLessThanOrEqual(80);
     expect(arc.summary.endsWith('…')).toBe(true);
   });
 
@@ -183,6 +183,38 @@ describe('resolveNote', () => {
     ].join('\n');
     const out = resolveNote(ONLY, 'p1', '2026-06-02T12:00:00Z');
     expect(out).not.toContain('mw:log');
+    expect(out).toContain('<!-- mw:archive v=1');
+  });
+
+  it('falls back to a generic summary when the note has no thread messages', () => {
+    const EMPTY = [
+      'A.<!-- mw:p1 -->',
+      '<!-- mw:log v=1',
+      '{"id":"p1","type":"comment","state":"open","disp":"none","anchor":{"kind":"point","before":".","after":""},"thread":[]}',
+      '-->',
+      '',
+    ].join('\n');
+    const out = resolveNote(EMPTY, 'p1', '2026-06-02T12:00:00Z');
+    const arc = JSON.parse(out.split('\n').find((l) => l.trim().startsWith('{"id":"p1"'))!);
+    expect(arc.summary).toBe('Resolved');
+  });
+
+  it('strips a span note whose markers are on different lines', () => {
+    const MULTILINE = [
+      '# Demo',
+      '',
+      'Start <!-- mw:s9 -->first line',
+      'second line<!-- /mw:s9 --> end.',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"s9","type":"comment","state":"open","disp":"none","anchor":{"kind":"span","hash":"0","before":"Start ","after":" end"},"thread":[{"by":"agent","at":"2026-06-01T10:00:00Z","body":"check this span"}]}',
+      '-->',
+      '',
+    ].join('\n');
+    const out = resolveNote(MULTILINE, 's9', '2026-06-02T12:00:00Z');
+    expect(out).not.toContain('mw:s9');
+    expect(out).toContain('first line');
+    expect(out).toContain('second line');
     expect(out).toContain('<!-- mw:archive v=1');
   });
 });
