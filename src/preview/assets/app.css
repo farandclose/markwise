@@ -143,3 +143,32 @@ html, body {
 .mw-verbs button { border: 1px solid var(--mw-line); background: #fff; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; }
 
 .mw-error { color: #b00020; }
+
+/* Per-speaker thread distinction (M2): the reviewer's own messages read stronger than the agent's */
+.mw-msg.mw-by-reviewer { border-left: 2px solid var(--mw-ink); padding-left: 8px; }
+.mw-msg.mw-by-agent { border-left: 2px solid var(--mw-line); padding-left: 8px; }
+.mw-msg.mw-by-reviewer .mw-msg-by { color: var(--mw-ink); }
+.mw-msg.mw-by-agent .mw-msg-by { color: var(--mw-muted); }
+
+/* Live verb buttons (M2) */
+.mw-verbs button { cursor: pointer; }
+.mw-verbs button:disabled { opacity: 0.5; cursor: default; }
+.mw-resolve-btn { border-color: var(--mw-ink); }
+
+/* Transient action feedback (M2) */
+.mw-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+.mw-toast.show { opacity: 1; }
