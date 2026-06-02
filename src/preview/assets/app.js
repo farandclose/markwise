@@ -1,8 +1,7 @@
-// Markwise previewer - read-only browser app. No build step, no framework: it fetches the
+// Markwise previewer - browser app. No build step, no framework: it fetches the
 // server-rendered document payload, drops the HTML into the reading column, builds the notes rail,
 // and wires the clean<->revealed toggle plus one-at-a-time, bidirectional note activation.
-// Mutation (create / reply / resolve / handoff) is the next milestone; those controls render here
-// disabled so the layout is real for review.
+// Mutations (reply / resolve) POST to the server and repaint via a single load() path.
 
 (function () {
   'use strict';
@@ -13,6 +12,8 @@
   const titleEl = document.querySelector('.mw-doctitle');
   const counterBtn = document.querySelector('.mw-counter');
   const countEl = document.querySelector('.mw-count');
+
+  let activeId = null;
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
@@ -37,6 +38,34 @@
     }
     const last = note.thread[note.thread.length - 1];
     return last ? last.body : '';
+  }
+
+  function showToast(msg) {
+    let t = document.querySelector('.mw-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.className = 'mw-toast';
+      body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add('show');
+    window.setTimeout(function () { t.classList.remove('show'); }, 3000);
+  }
+
+  function send(url, bodyObj) {
+    return fetch(url, {
+      method: 'POST',
+      headers: bodyObj ? { 'content-type': 'application/json' } : {},
+      body: bodyObj ? JSON.stringify(bodyObj) : undefined,
+    })
+      .then(function (r) {
+        if (!r.ok) {
+          return r.json().then(function (e) { throw new Error(e.error || 'Request failed'); });
+        }
+        return r.json();
+      })
+      .then(function () { return load(); })
+      .catch(function (err) { showToast(err.message || 'Action failed'); });
   }
 
   function renderRail(notes) {
@@ -66,15 +95,44 @@
       });
       card.appendChild(threadEl);
 
-      // Composition + verbs are disabled in the read-only milestone (shown for layout).
       const actions = document.createElement('div');
       actions.className = 'mw-card-actions';
-      actions.innerHTML =
-        '<textarea class="mw-reply" placeholder="Reply..." disabled></textarea>' +
-        '<div class="mw-verbs">' +
-        '<button type="button" class="mw-reply-btn" disabled>Reply</button>' +
-        '<button type="button" class="mw-resolve-btn" disabled>Resolve</button>' +
-        '</div>';
+
+      const ta = document.createElement('textarea');
+      ta.className = 'mw-reply';
+      ta.placeholder = 'Reply...';
+      ta.addEventListener('click', function (e) { e.stopPropagation(); });
+
+      const verbs = document.createElement('div');
+      verbs.className = 'mw-verbs';
+
+      const replyBtn = document.createElement('button');
+      replyBtn.type = 'button';
+      replyBtn.className = 'mw-reply-btn';
+      replyBtn.textContent = 'Reply';
+      replyBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const text = ta.value.trim();
+        if (!text) return;
+        replyBtn.disabled = true;
+        send('/api/note/' + encodeURIComponent(note.id) + '/reply', { body: text })
+          .finally(function () { replyBtn.disabled = false; });
+      });
+
+      const resolveBtn = document.createElement('button');
+      resolveBtn.type = 'button';
+      resolveBtn.className = 'mw-resolve-btn';
+      resolveBtn.textContent = 'Resolve';
+      resolveBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        resolveBtn.disabled = true;
+        send('/api/note/' + encodeURIComponent(note.id) + '/resolve', null);
+      });
+
+      verbs.appendChild(replyBtn);
+      verbs.appendChild(resolveBtn);
+      actions.appendChild(ta);
+      actions.appendChild(verbs);
       card.appendChild(actions);
 
       card.addEventListener('click', function () {
@@ -85,6 +143,7 @@
   }
 
   function activate(id) {
+    activeId = id;
     if (id != null && body.classList.contains('mw-clean')) reveal(true);
     document.querySelectorAll('.active').forEach(function (el) {
       el.classList.remove('active');
@@ -120,18 +179,28 @@
     reveal(body.classList.contains('mw-clean'));
   });
 
-  fetch('/api/doc')
-    .then(function (r) { return r.json(); })
-    .then(function (payload) {
-      titleEl.textContent = payload.title || '';
-      document.title = (payload.title ? payload.title + ' - ' : '') + 'Markwise Preview';
-      docEl.innerHTML = payload.html || '';
-      countEl.textContent = String(payload.openCount || 0);
-      renderRail(payload.notes || []);
-      wireProseActivation();
-    })
-    .catch(function (err) {
-      docEl.innerHTML = '<p class="mw-error">Could not load the document.</p>';
-      console.error('[markwise] failed to load /api/doc', err);
-    });
+  function load() {
+    return fetch('/api/doc')
+      .then(function (r) { return r.json(); })
+      .then(function (payload) {
+        titleEl.textContent = payload.title || '';
+        document.title = (payload.title ? payload.title + ' - ' : '') + 'Markwise Preview';
+        docEl.innerHTML = payload.html || '';
+        countEl.textContent = String(payload.openCount || 0);
+        renderRail(payload.notes || []);
+        // Re-apply the active note if it survived the repaint; otherwise clear it.
+        if (activeId != null && railEl.querySelector('.mw-card' + idSel(activeId))) {
+          activate(activeId);
+        } else {
+          activeId = null;
+        }
+      })
+      .catch(function (err) {
+        docEl.innerHTML = '<p class="mw-error">Could not load the document.</p>';
+        console.error('[markwise] failed to load /api/doc', err);
+      });
+  }
+
+  wireProseActivation();
+  load();
 })();
