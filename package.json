@@ -12,7 +12,7 @@
     "AUTHOR_PROMPT.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-preview-assets.mjs",
     "lint:self": "node ./dist/cli.js lint sample.md",
     "test": "vitest run",
     "test:watch": "vitest"

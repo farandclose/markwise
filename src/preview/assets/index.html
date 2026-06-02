@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Markwise Preview</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body class="mw-clean">
+    <header class="mw-toolbar">
+      <div class="mw-brand">
+        <span class="mw-wordmark">Markwise</span>
+        <span class="mw-doctitle"></span>
+      </div>
+      <div class="mw-tools">
+        <button type="button" class="mw-counter" aria-pressed="false">
+          <span class="mw-count">0</span> notes
+        </button>
+        <button type="button" class="mw-done" disabled title="Available in the next milestone">
+          Done reviewing
+        </button>
+      </div>
+    </header>
+    <main class="mw-stage">
+      <article class="mw-doc" aria-label="document"></article>
+      <aside class="mw-rail" aria-label="notes"></aside>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
