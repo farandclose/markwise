@@ -38,3 +38,77 @@ export function appendReply(source: string, id: string, body: string, at: string
   lines[rec.line - 1] = JSON.stringify(updated);
   return lines.join('\n');
 }
+
+/**
+ * Collapse a thread's opening message to a one-line archive summary (<= 80 chars, with a trailing
+ * ellipsis when truncated). Falls back to 'Resolved' when there is no usable opening message.
+ */
+function deriveSummary(thread: unknown): string {
+  const first =
+    Array.isArray(thread) && isObj(thread[0]) && typeof thread[0].body === 'string'
+      ? (thread[0].body as string)
+      : '';
+  const oneLine = first.replace(/\s+/g, ' ').trim();
+  if (oneLine === '') return 'Resolved';
+  return oneLine.length > 80 ? oneLine.slice(0, 79).trimEnd() + '…' : oneLine;
+}
+
+/**
+ * Resolve note `id`: strip its inline marker(s) from the prose (leaving any wrapped text as plain
+ * prose), remove its record from `mw:log`, and add a compact record to `mw:archive` (creating that
+ * block if absent). If resolving empties the log block, the block itself is removed. Pure string
+ * transform; `at` is the caller-supplied ISO resolution time.
+ */
+export function resolveNote(source: string, id: string, at: string): string {
+  const doc = parse(source);
+  const log = doc.blocks.find((b) => b.name === 'log');
+  if (!log) throw new NoteMutationError('document has no mw:log block', 404);
+
+  const rec = log.records.find((r) => isObj(r.json) && r.json.id === id);
+  if (!rec || !isObj(rec.json)) throw new NoteMutationError(`note not found: ${id}`, 404);
+  const obj = rec.json;
+  if (obj.state !== 'open') throw new NoteMutationError(`note is not open: ${id}`, 409);
+
+  const archiveRec = JSON.stringify({
+    id,
+    type: obj.type,
+    state: 'resolved',
+    at,
+    summary: deriveSummary(obj.thread),
+  });
+
+  // Phase 1: remove this note's inline markers from the prose, right-to-left so offsets stay valid.
+  const mine = doc.markers.filter((m) => m.id === id).sort((a, b) => b.offset - a.offset);
+  let stripped = source;
+  for (const m of mine) stripped = stripped.slice(0, m.offset) + stripped.slice(m.end);
+
+  // Phase 2: drop the resolved record from mw:log and add it to mw:archive. Re-parse the
+  // marker-stripped text so block and record line numbers are accurate.
+  const doc2 = parse(stripped);
+  const log2 = doc2.blocks.find((b) => b.name === 'log')!;
+  const rec2 = log2.records.find((r) => isObj(r.json) && r.json.id === id)!;
+  const archive = doc2.blocks.find((b) => b.name === 'archive');
+  const lines = stripped.split('\n');
+
+  // If this was the only record, drop the entire (now empty) log block instead of leaving a husk.
+  const logEmpties = log2.records.length === 1;
+  const dropFrom = logEmpties ? log2.openerLine : rec2.line;
+  const dropTo = logEmpties ? log2.closeLine ?? log2.lastLine : rec2.line;
+
+  const out: string[] = [];
+  let appended = false;
+  for (let n = 1; n <= lines.length; n++) {
+    if (n >= dropFrom && n <= dropTo) continue; // drop the resolved record (or the empty log block)
+    if (archive && n === archive.closeLine) {
+      out.push(archiveRec); // insert just before the existing archive's close line
+      appended = true;
+    }
+    out.push(lines[n - 1]!);
+  }
+  if (!appended) {
+    // No archive block existed: create one at the end of the file.
+    while (out.length > 0 && out[out.length - 1]!.trim() === '') out.pop();
+    out.push('', '<!-- mw:archive v=1', archiveRec, '-->');
+  }
+  return out.join('\n');
+}
