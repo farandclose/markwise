@@ -40,6 +40,17 @@ describe('injectMarkerSpans', () => {
     const out = injectMarkerSpans(DOC, extractNotes(DOC));
     expect(out).toContain('`<!-- mw:cf -->`');
   });
+
+  it('wraps a delete span note with mw-type-delete', () => {
+    const out = injectMarkerSpans(DOC, extractNotes(DOC));
+    expect(out).toContain('<span class="mw-span mw-type-delete" data-mw-id="s3">large</span>');
+  });
+
+  it('leaves a marker untouched when its id has no matching note', () => {
+    const out = injectMarkerSpans(DOC, []); // no notes -> every marker is an orphan
+    expect(out).toContain('<!-- mw:s1 -->');
+    expect(out).toContain('<!-- /mw:s1 -->');
+  });
 });
 
 describe('renderDocumentHtml', () => {
