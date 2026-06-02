@@ -61,4 +61,19 @@ describe('renderDocumentHtml', () => {
     expect(html).toContain('data-mw-id="s2"');
     expect(html).not.toContain('mw:log');
   });
+
+  it('does not paint a highlight for a resolved note that still has a marker', () => {
+    const src = [
+      '# T',
+      '',
+      'Ships by <!-- mw:s1 -->Q3<!-- /mw:s1 -->.',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"s1","type":"replace","state":"resolved","disp":"none","anchor":{"kind":"span","hash":"0","before":"by ","after":"."},"text":"Q4","thread":[]}',
+      '-->',
+      '',
+    ].join('\n');
+    const html = renderDocumentHtml(src);
+    expect(html).not.toContain('data-mw-id="s1"');
+  });
 });

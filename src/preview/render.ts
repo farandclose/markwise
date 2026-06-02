@@ -62,8 +62,8 @@ export function injectMarkerSpans(source: string, notes: NoteView[]): string {
 // the reviewer's own local file, served only to localhost - see the security note in the plan).
 const md = new MarkdownIt({ html: true, linkify: true, typographer: false });
 
-/** Render a Markwise document to display HTML with note-highlight spans in place. */
+/** Render a Markwise document to display HTML with highlight spans for the OPEN notes only. */
 export function renderDocumentHtml(source: string): string {
-  const notes = extractNotes(source);
-  return md.render(injectMarkerSpans(source, notes));
+  const open = extractNotes(source).filter((n) => n.state === 'open');
+  return md.render(injectMarkerSpans(source, open));
 }
