@@ -6,3 +6,6 @@ dist/
 # Transient session / harness artifacts (not project source)
 .superpowers/
 .claude/settings.json
+
+# Local scratch doc for dogfooding the previewer (sample.md stays the clean reference)
+playground.md
