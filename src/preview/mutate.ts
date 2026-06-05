@@ -1,5 +1,6 @@
 import { parse } from '../parse.js';
 import type { ThreadMessage } from '../types.js';
+import { shortHash } from '../hash.js';
 
 /** Raised when a mutation cannot be applied. `status` is the HTTP status the server should send. */
 export class NoteMutationError extends Error {
@@ -112,4 +113,86 @@ export function resolveNote(source: string, id: string, at: string): string {
     out.push('', '<!-- mw:archive v=1', archiveRec, '-->');
   }
   return out.join('\n');
+}
+
+const MARKER_RE = /<!--\s*\/?mw:[A-Za-z0-9][A-Za-z0-9_-]*\s*-->/g;
+const stripMarkers = (s: string): string => s.replace(MARKER_RE, '');
+const CONTEXT_WINDOW = 16; // chars of before/after context stored on a new anchor
+
+/** Smallest unused id of the form `nN`, scanning record ids across every block (log + archive). */
+function mintId(source: string): string {
+  const used = new Set<string>();
+  for (const b of parse(source).blocks) {
+    for (const r of b.records) {
+      if (isObj(r.json) && typeof r.json.id === 'string') used.add(r.json.id);
+    }
+  }
+  let n = 1;
+  while (used.has(`n${n}`)) n++;
+  return `n${n}`;
+}
+
+/** Insert `recordJson` as the first record line of the mw:log block, creating the block if absent. */
+function insertLogRecord(source: string, recordJson: string): string {
+  const doc = parse(source);
+  const log = doc.blocks.find((b) => b.name === 'log');
+  const lines = source.split('\n');
+  if (log) {
+    lines.splice(log.openerLine, 0, recordJson); // right after the opener line (1-based -> this index)
+    return lines.join('\n');
+  }
+  // No log block: create one at the end of the file.
+  const out = [...lines];
+  while (out.length > 0 && out[out.length - 1]!.trim() === '') out.pop();
+  out.push('', '<!-- mw:log v=1', recordJson, '-->');
+  return out.join('\n');
+}
+
+/**
+ * Create a brand-new reviewer `comment` note. Inserts the marker(s) into the prose and a COMPLETE
+ * record (before/after context + span hash computed directly from the source) into mw:log, then
+ * returns the new text and the minted id. The record is built correct so the persist pipeline's
+ * fixText/lintText are a pure safety net. Pure transform; `at` is the caller-supplied ISO time.
+ */
+export function createNote(
+  source: string,
+  opts: { kind: 'point' | 'span'; start: number; end?: number; body: string; at: string }
+): { output: string; id: string } {
+  const body = opts.body.trim();
+  if (body === '') throw new NoteMutationError('comment body is empty', 400);
+  const { kind, start } = opts;
+  if (!Number.isInteger(start) || start < 0 || start > source.length) {
+    throw new NoteMutationError('selection start out of range', 400);
+  }
+  const id = mintId(source);
+  const before = stripMarkers(source.slice(0, start)).slice(-CONTEXT_WINDOW);
+  const open = `<!-- mw:${id} -->`;
+
+  let withMarkers: string;
+  let anchor: Record<string, unknown>;
+  if (kind === 'span') {
+    const end = opts.end;
+    if (!Number.isInteger(end) || end! <= start || end! > source.length) {
+      throw new NoteMutationError('selection end out of range', 400);
+    }
+    const wrapped = source.slice(start, end!);
+    const after = stripMarkers(source.slice(end!)).slice(0, CONTEXT_WINDOW);
+    const close = `<!-- /mw:${id} -->`;
+    withMarkers = source.slice(0, start) + open + wrapped + close + source.slice(end!);
+    anchor = { kind: 'span', hash: shortHash(stripMarkers(wrapped)), before, after };
+  } else {
+    const after = stripMarkers(source.slice(start)).slice(0, CONTEXT_WINDOW);
+    withMarkers = source.slice(0, start) + open + source.slice(start);
+    anchor = { kind: 'point', before, after };
+  }
+
+  const record = {
+    id,
+    type: 'comment',
+    state: 'open',
+    disp: 'none',
+    anchor,
+    thread: [{ by: 'reviewer', at: opts.at, body }],
+  };
+  return { output: insertLogRecord(withMarkers, JSON.stringify(record)), id };
 }

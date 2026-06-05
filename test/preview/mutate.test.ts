@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendReply, resolveNote, NoteMutationError } from '../../src/preview/mutate.js';
+import { appendReply, resolveNote, createNote, NoteMutationError } from '../../src/preview/mutate.js';
 
 const DOC = [
   '# Demo',
@@ -216,5 +216,78 @@ describe('resolveNote', () => {
     expect(out).toContain('first line');
     expect(out).toContain('second line');
     expect(out).toContain('<!-- mw:archive v=1');
+  });
+});
+
+const FRESH = [
+  '# Demo',
+  '',
+  'Our wedge is teams.<!-- mw:n1 --> More text in plain text here.',
+  '',
+  '<!-- mw:log v=1',
+  '{"id":"n1","type":"comment","state":"open","disp":"none","anchor":{"kind":"point","before":"teams.","after":" More t"},"thread":[{"by":"agent","at":"2026-06-01T10:00:00Z","body":"hi"}]}',
+  '-->',
+  '',
+].join('\n');
+
+describe('createNote', () => {
+  const at = '2026-06-04T00:00:00Z';
+
+  it('wraps a word as a span comment with a correct anchor', () => {
+    const wStart = FRESH.indexOf('wedge');
+    const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: 'why?', at });
+    expect(id).toBe('n2'); // n1 taken
+    expect(output).toContain(`<!-- mw:n2 -->wedge<!-- /mw:n2 -->`);
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith('{"id":"n2"'))!);
+    expect(rec.type).toBe('comment');
+    expect(rec.state).toBe('open');
+    expect(rec.anchor.kind).toBe('span');
+    expect(typeof rec.anchor.hash).toBe('string');
+    expect(rec.anchor.before.endsWith('Our ')).toBe(true);
+    expect(rec.anchor.after.startsWith(' is ')).toBe(true);
+    expect(rec.thread).toEqual([{ by: 'reviewer', at, body: 'why?' }]);
+  });
+
+  it('inserts a point comment (no hash) at a gap', () => {
+    const gap = FRESH.indexOf('plain text') + 'plain'.length; // between "plain" and "text"
+    const { output, id } = createNote(FRESH, { kind: 'point', start: gap, body: 'add a unit', at });
+    expect(output).toContain(`plain<!-- mw:${id} -->`);
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.anchor.kind).toBe('point');
+    expect(rec.anchor.hash).toBeUndefined();
+  });
+
+  it('the created record is self-correct: fixText changes nothing and it lints clean', async () => {
+    const { fixText } = await import('../../src/fix.js');
+    const { lintText } = await import('../../src/lint.js');
+    const wStart = FRESH.indexOf('wedge');
+    const { output } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: 'why?', at });
+    expect(fixText(output).changes).toEqual([]);
+    expect(lintText(output).filter((f) => f.severity === 'error')).toEqual([]);
+  });
+
+  it('mints the smallest unused nN across log and archive', () => {
+    const withArchive = FRESH.replace(
+      '-->\n',
+      '-->\n\n<!-- mw:archive v=1\n{"id":"n2","type":"comment","state":"resolved","at":"x","summary":"s"}\n-->\n'
+    );
+    const wStart = withArchive.indexOf('wedge');
+    const { id } = createNote(withArchive, { kind: 'span', start: wStart, end: wStart + 5, body: 'q', at });
+    expect(id).toBe('n3'); // n1 (log) and n2 (archive) both taken
+  });
+
+  it('creates the mw:log block when the document has none', () => {
+    const noLog = '# Demo\n\nOur wedge is here.\n';
+    const wStart = noLog.indexOf('wedge');
+    const { output, id } = createNote(noLog, { kind: 'span', start: wStart, end: wStart + 5, body: 'q', at });
+    expect(id).toBe('n1');
+    expect(output).toContain('<!-- mw:log v=1');
+    expect(output).toContain(`<!-- mw:n1 -->wedge<!-- /mw:n1 -->`);
+  });
+
+  it('rejects an empty body and an out-of-range selection', () => {
+    expect(() => createNote(FRESH, { kind: 'point', start: 5, body: '   ', at })).toThrow(NoteMutationError);
+    expect(() => createNote(FRESH, { kind: 'point', start: 10_000, body: 'x', at })).toThrow(NoteMutationError);
+    expect(() => createNote(FRESH, { kind: 'span', start: 5, end: 5, body: 'x', at })).toThrow(NoteMutationError);
   });
 });
