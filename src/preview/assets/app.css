@@ -178,7 +178,7 @@ html, body {
 
 /* Floating Comment pill on a selection (spec section 8) */
 .mw-pill {
-  position: absolute;
+  position: fixed;
   z-index: 20;
   transform: translate(-50%, -100%);
   background: #111;

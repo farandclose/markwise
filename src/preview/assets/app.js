@@ -171,11 +171,27 @@
   }
 
   // Map a DOM (textNode, offset) to an absolute source offset via the enclosing breadcrumb run.
+  // NOTE: the DOM char offset equals the source offset only for plain text; a run containing an
+  // HTML entity (&amp; etc.) would skew a point-click offset. Rare in prose; a thin-slice known gap.
   function srcOffset(container, offset) {
     var el = container && container.nodeType === 3 ? container.parentElement : container;
     var run = el && el.closest ? el.closest('.mw-run') : null;
     if (!run) return null;
     return parseInt(run.getAttribute('data-s'), 10) + offset;
+  }
+
+  // A collapsed Range at a viewport point, across Chrome/Safari (caretRangeFromPoint) and
+  // Firefox (caretPositionFromPoint).
+  function caretRangeAt(x, y) {
+    if (document.caretRangeFromPoint) return document.caretRangeFromPoint(x, y);
+    if (document.caretPositionFromPoint) {
+      var cp = document.caretPositionFromPoint(x, y);
+      if (!cp) return null;
+      var r = document.createRange();
+      r.setStart(cp.offsetNode, cp.offset);
+      return r;
+    }
+    return null;
   }
 
   // Read the current double-click result into a creation target, or null if unusable.
@@ -191,7 +207,7 @@
       return null;
     }
     // Collapsed: double-click on a gap -> a point at the caret.
-    var pos = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null;
+    var pos = caretRangeAt(e.clientX, e.clientY);
     if (pos) {
       var off = srcOffset(pos.startContainer, pos.startOffset);
       if (off != null) {
@@ -209,11 +225,12 @@
     pillEl.className = 'mw-pill';
     pillEl.textContent = '💬 Comment';
     var rect = target.rect;
-    pillEl.style.left = window.scrollX + rect.left + rect.width / 2 + 'px';
-    pillEl.style.top = window.scrollY + rect.top - 8 + 'px';
+    // .mw-pill is position:fixed, so viewport-relative getBoundingClientRect coords map directly.
+    pillEl.style.left = rect.left + rect.width / 2 + 'px';
+    pillEl.style.top = rect.top - 8 + 'px';
     pillEl.addEventListener('click', function (e) {
       e.stopPropagation();
-      openDraft(pendingTarget); // defined in Task 5
+      openDraft(pendingTarget);
     });
     body.appendChild(pillEl);
   }
@@ -328,7 +345,7 @@
         var en = srcOffset(r.endContainer, r.endOffset);
         if (s != null && en != null && en > s) {
           e.preventDefault();
-          openDraft({ kind: 'span', start: s, end: en }); // defined in Task 5
+          openDraft({ kind: 'span', start: s, end: en });
         }
       }
     }
