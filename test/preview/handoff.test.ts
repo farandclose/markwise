@@ -24,9 +24,14 @@ describe('buildHandoffText', () => {
     expect(text).toContain('Run `markwise prompt docs/plan.md`');
   });
 
+  it('separates the prose and the command with a blank line', () => {
+    const text = buildHandoffText({ path: 'a.md', waitingCount: 1 });
+    expect(text).toContain('.\n\nRun `markwise prompt');
+  });
+
   it('contains no em-dash and no HTML-comment-breaking sequence', () => {
     const text = buildHandoffText({ path: 'a.md', waitingCount: 1 });
-    expect(text).not.toContain('—'); // em-dash (escaped so no literal em-dash lives in the repo)
+    expect(text).not.toContain('\u2014'); // em-dash character (escape keeps a literal em-dash out of the repo)
     expect(text).not.toContain('-->');
   });
 });
