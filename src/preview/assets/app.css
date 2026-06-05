@@ -172,3 +172,31 @@ html, body {
   z-index: 10;
 }
 .mw-toast.show { opacity: 1; }
+
+/* Offset breadcrumbs are invisible structure - never alter the reading surface (M3a) */
+.mw-run { background: none; }
+
+/* Floating Comment pill on a selection (spec section 8) */
+.mw-pill {
+  position: absolute;
+  z-index: 20;
+  transform: translate(-50%, -100%);
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.mw-pill::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #111;
+}

@@ -14,6 +14,8 @@
   const countEl = document.querySelector('.mw-count');
 
   let activeId = null;
+  let pendingTarget = null; // { kind:'span'|'point', start, end? } awaiting a draft
+  let pillEl = null;
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
@@ -164,6 +166,58 @@
     if (!on) activate(null);
   }
 
+  function clearPill() {
+    if (pillEl) { pillEl.remove(); pillEl = null; }
+  }
+
+  // Map a DOM (textNode, offset) to an absolute source offset via the enclosing breadcrumb run.
+  function srcOffset(container, offset) {
+    var el = container && container.nodeType === 3 ? container.parentElement : container;
+    var run = el && el.closest ? el.closest('.mw-run') : null;
+    if (!run) return null;
+    return parseInt(run.getAttribute('data-s'), 10) + offset;
+  }
+
+  // Read the current double-click result into a creation target, or null if unusable.
+  function targetFromEvent(e) {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount && !sel.isCollapsed) {
+      var r = sel.getRangeAt(0);
+      var s = srcOffset(r.startContainer, r.startOffset);
+      var en = srcOffset(r.endContainer, r.endOffset);
+      if (s != null && en != null && en > s) {
+        return { kind: 'span', start: s, end: en, rect: r.getBoundingClientRect() };
+      }
+      return null;
+    }
+    // Collapsed: double-click on a gap -> a point at the caret.
+    var pos = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null;
+    if (pos) {
+      var off = srcOffset(pos.startContainer, pos.startOffset);
+      if (off != null) {
+        return { kind: 'point', start: off, rect: { left: e.clientX, top: e.clientY, width: 0 } };
+      }
+    }
+    return null;
+  }
+
+  function showPill(target) {
+    clearPill();
+    pendingTarget = target;
+    pillEl = document.createElement('button');
+    pillEl.type = 'button';
+    pillEl.className = 'mw-pill';
+    pillEl.textContent = '💬 Comment';
+    var rect = target.rect;
+    pillEl.style.left = window.scrollX + rect.left + rect.width / 2 + 'px';
+    pillEl.style.top = window.scrollY + rect.top - 8 + 'px';
+    pillEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openDraft(pendingTarget); // defined in Task 5
+    });
+    body.appendChild(pillEl);
+  }
+
   function wireProseActivation() {
     docEl.addEventListener('click', function (e) {
       const target = e.target.closest('[data-mw-id]');
@@ -201,6 +255,32 @@
         console.error('[markwise] failed to load /api/doc', err);
       });
   }
+
+  docEl.addEventListener('dblclick', function (e) {
+    var target = targetFromEvent(e);
+    if (target) showPill(target);
+  });
+
+  // Cmd+Option+M / Ctrl+Alt+M opens a draft from the current selection (spec section 8).
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.altKey && (e.key === 'm' || e.key === 'M')) {
+      var sel = window.getSelection();
+      if (sel && sel.rangeCount && !sel.isCollapsed) {
+        var r = sel.getRangeAt(0);
+        var s = srcOffset(r.startContainer, r.startOffset);
+        var en = srcOffset(r.endContainer, r.endOffset);
+        if (s != null && en != null && en > s) {
+          e.preventDefault();
+          openDraft({ kind: 'span', start: s, end: en }); // defined in Task 5
+        }
+      }
+    }
+  });
+
+  // Clicking elsewhere dismisses a pending pill.
+  document.addEventListener('mousedown', function (e) {
+    if (pillEl && e.target !== pillEl) clearPill();
+  });
 
   wireProseActivation();
   load();
