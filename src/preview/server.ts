@@ -1,4 +1,4 @@
-import { createServer, type Server, type IncomingMessage } from 'node:http';
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
@@ -65,6 +65,14 @@ function persist(filePath: string, transform: (src: string) => string): DocPaylo
   return buildDocPayload(fixed, filePath);
 }
 
+/** Write a JSON error response, mapping a NoteMutationError to its status (else 500). */
+function sendError(res: ServerResponse, err: unknown): void {
+  const status = err instanceof NoteMutationError ? err.status : 500;
+  const message = err instanceof Error ? err.message : 'error';
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify({ error: message }));
+}
+
 /**
  * A localhost-only HTTP server for one document. GET /api/doc re-reads the file every request (so
  * external edits and, later, our own writes show up on refresh) and returns buildDocPayload(...).
@@ -92,10 +100,7 @@ export function createPreviewServer(filePath: string): Server {
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify(payload));
         } catch (err) {
-          const status = err instanceof NoteMutationError ? err.status : 500;
-          const message = err instanceof Error ? err.message : 'error';
-          res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ error: message }));
+          sendError(res, err);
         }
         return;
       }
@@ -103,7 +108,11 @@ export function createPreviewServer(filePath: string): Server {
       if (req.method === 'POST' && url.pathname === '/api/note') {
         try {
           const parsed = await readJsonBody(req);
-          const kind = isObj(parsed) && parsed.kind === 'point' ? 'point' : 'span';
+          const rawKind = isObj(parsed) ? parsed.kind : undefined;
+          if (rawKind !== 'point' && rawKind !== 'span') {
+            throw new NoteMutationError('kind must be "point" or "span"', 400);
+          }
+          const kind: 'point' | 'span' = rawKind;
           const start = isObj(parsed) && typeof parsed.start === 'number' ? parsed.start : NaN;
           const end = isObj(parsed) && typeof parsed.end === 'number' ? parsed.end : undefined;
           const body = isObj(parsed) && typeof parsed.body === 'string' ? parsed.body : '';
@@ -117,10 +126,7 @@ export function createPreviewServer(filePath: string): Server {
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ ...payload, createdId }));
         } catch (err) {
-          const status = err instanceof NoteMutationError ? err.status : 500;
-          const message = err instanceof Error ? err.message : 'error';
-          res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ error: message }));
+          sendError(res, err);
         }
         return;
       }

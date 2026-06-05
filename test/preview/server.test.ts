@@ -105,6 +105,22 @@ describe('createPreviewServer', () => {
     const res = await post(base, '/api/note', { kind: 'point', start: 3, body: '  ' });
     expect(res.status).toBe(400);
   });
+
+  it('rejects an unrecognized kind (400)', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note', { kind: 'paragraph', start: 3, end: 8, body: 'x' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a malformed JSON body (400)', async () => {
+    const base = await start(DOC);
+    const res = await fetch(`${base}/api/note`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: 'not-json{',
+    });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('mutation endpoints', () => {
