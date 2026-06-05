@@ -43,8 +43,9 @@ describe('renderDocumentHtml: breadcrumbs', () => {
 
   it('wraps the wrapped span text "Q3" in a breadcrumb whose offset is correct', () => {
     const html = renderDocumentHtml(DOC);
-    const m = /data-s="(\d+)" data-e="(\d+)">Q3<\/span>/.exec(html)!;
-    expect(DOC.slice(Number(m[1]), Number(m[2]))).toBe('Q3');
+    const m = /data-s="(\d+)" data-e="(\d+)">Q3<\/span>/.exec(html);
+    expect(m).not.toBeNull();
+    expect(DOC.slice(Number(m![1]), Number(m![2]))).toBe('Q3');
   });
 });
 
@@ -65,6 +66,20 @@ describe('renderDocumentHtml: marker highlights', () => {
     const html = renderDocumentHtml(DOC);
     expect(html).not.toContain('mw:log');
     expect(html).not.toContain('"id":"s1"');
+  });
+
+  it('drops the mw:archive block', () => {
+    const src = [
+      '# T',
+      '',
+      'Done.',
+      '',
+      '<!-- mw:archive v=1',
+      '{"id":"a1","type":"comment","state":"resolved","at":"2026-06-01T00:00:00Z","summary":"done"}',
+      '-->',
+      '',
+    ].join('\n');
+    expect(renderDocumentHtml(src)).not.toContain('mw:archive');
   });
 
   it('leaves a marker inside inline code untouched (not a highlight)', () => {
