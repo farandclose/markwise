@@ -200,3 +200,25 @@ html, body {
   border: 5px solid transparent;
   border-top-color: #111;
 }
+
+/* Draft note card (composition, spec section 8) */
+.mw-draft {
+  border: 1px dashed var(--mw-ink);
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.mw-draft textarea {
+  width: 100%;
+  min-height: 56px;
+  border: 1px solid var(--mw-line);
+  border-radius: 8px;
+  padding: 8px;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+.mw-draft-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.mw-draft-actions button { border: 1px solid var(--mw-line); background: #fff; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.mw-draft-add { border-color: var(--mw-ink); }

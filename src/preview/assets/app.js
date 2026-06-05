@@ -234,6 +234,63 @@
     reveal(body.classList.contains('mw-clean'));
   });
 
+  function openDraft(target) {
+    clearPill();
+    if (body.classList.contains('mw-clean')) reveal(true);
+    // Remove any existing draft first (one draft at a time).
+    var existing = railEl.querySelector('.mw-draft');
+    if (existing) existing.remove();
+
+    var card = document.createElement('section');
+    card.className = 'mw-draft';
+    var ta = document.createElement('textarea');
+    ta.placeholder = 'Write a comment…';
+    var actions = document.createElement('div');
+    actions.className = 'mw-draft-actions';
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'mw-draft-cancel';
+    cancel.textContent = 'Cancel';
+    var add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'mw-draft-add';
+    add.textContent = 'Add';
+
+    cancel.addEventListener('click', function () {
+      card.remove();
+      var s = window.getSelection();
+      if (s) s.removeAllRanges();
+    });
+    add.addEventListener('click', function () {
+      var text = ta.value.trim();
+      if (!text) return;
+      add.disabled = true;
+      var payload = { kind: target.kind, start: target.start, body: text };
+      if (target.kind === 'span') payload.end = target.end;
+      fetch('/api/note', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Create failed'); });
+          return r.json();
+        })
+        .then(function (data) {
+          if (data && data.createdId) activeId = data.createdId; // activate the new note after repaint
+          return load();
+        })
+        .catch(function (err) { showToast(err.message || 'Create failed'); add.disabled = false; });
+    });
+
+    actions.appendChild(cancel);
+    actions.appendChild(add);
+    card.appendChild(ta);
+    card.appendChild(actions);
+    railEl.insertBefore(card, railEl.firstChild);
+    ta.focus();
+  }
+
   function load() {
     return fetch('/api/doc')
       .then(function (r) { return r.json(); })
