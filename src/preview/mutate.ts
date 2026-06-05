@@ -138,7 +138,8 @@ function insertLogRecord(source: string, recordJson: string): string {
   const log = doc.blocks.find((b) => b.name === 'log');
   const lines = source.split('\n');
   if (log) {
-    lines.splice(log.openerLine, 0, recordJson); // right after the opener line (1-based -> this index)
+    // openerLine is 1-based; as a 0-based splice index it inserts immediately after the opener line.
+    lines.splice(log.openerLine, 0, recordJson);
     return lines.join('\n');
   }
   // No log block: create one at the end of the file.
@@ -164,6 +165,11 @@ export function createNote(
   if (!Number.isInteger(start) || start < 0 || start > source.length) {
     throw new NoteMutationError('selection start out of range', 400);
   }
+  const end = opts.end;
+  if (kind === 'span' && (!Number.isInteger(end) || end! <= start || end! > source.length)) {
+    throw new NoteMutationError('selection end out of range', 400);
+  }
+  // All inputs validated; now do the work (mintId parses the whole document).
   const id = mintId(source);
   const before = stripMarkers(source.slice(0, start)).slice(-CONTEXT_WINDOW);
   const open = `<!-- mw:${id} -->`;
@@ -171,10 +177,6 @@ export function createNote(
   let withMarkers: string;
   let anchor: Record<string, unknown>;
   if (kind === 'span') {
-    const end = opts.end;
-    if (!Number.isInteger(end) || end! <= start || end! > source.length) {
-      throw new NoteMutationError('selection end out of range', 400);
-    }
     const wrapped = source.slice(start, end!);
     const after = stripMarkers(source.slice(end!)).slice(0, CONTEXT_WINDOW);
     const close = `<!-- /mw:${id} -->`;
