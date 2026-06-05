@@ -290,4 +290,10 @@ describe('createNote', () => {
     expect(() => createNote(FRESH, { kind: 'point', start: 10_000, body: 'x', at })).toThrow(NoteMutationError);
     expect(() => createNote(FRESH, { kind: 'span', start: 5, end: 5, body: 'x', at })).toThrow(NoteMutationError);
   });
+
+  it('rejects a span selection that straddles an existing marker', () => {
+    const start = FRESH.indexOf('teams');
+    const end = FRESH.indexOf('More'); // crosses the <!-- mw:n1 --> marker between the two words
+    expect(() => createNote(FRESH, { kind: 'span', start, end, body: 'x', at })).toThrow(NoteMutationError);
+  });
 });

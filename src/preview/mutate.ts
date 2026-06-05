@@ -178,6 +178,12 @@ export function createNote(
   let anchor: Record<string, unknown>;
   if (kind === 'span') {
     const wrapped = source.slice(start, end!);
+    // Refuse a selection that straddles an existing marker: wrapping it would interleave fences,
+    // which lint does not catch for comment notes. (Reachable only via a multi-run Cmd+Option+M
+    // selection; the native double-click stays within one text run.)
+    if (stripMarkers(wrapped) !== wrapped) {
+      throw new NoteMutationError('selection would wrap an existing note marker', 400);
+    }
     const after = stripMarkers(source.slice(end!)).slice(0, CONTEXT_WINDOW);
     const close = `<!-- /mw:${id} -->`;
     withMarkers = source.slice(0, start) + open + wrapped + close + source.slice(end!);
