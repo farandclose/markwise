@@ -1,69 +1,103 @@
 import MarkdownIt from 'markdown-it';
-import { parse } from '../parse.js';
+import type Token from 'markdown-it/lib/token.mjs';
 import { extractNotes } from './notes.js';
 import type { NoteView } from './types.js';
 
-// Matches a whole mw:log / mw:archive comment block (single HTML comment ending at its first
-// `-->`; clean records never contain `-->`, enforced by lint L130). Same pattern strip.ts uses.
-const BLOCK_RE = /<!--\s*mw:(?:log|archive)\b[\s\S]*?-->/g;
+interface RenderEnv {
+  openById: Map<string, NoteView>;
+}
 
 const escapeAttr = (s: string): string => s.replace(/"/g, '&quot;');
 
-/**
- * Turn a Markwise source string into markdown ready for rendering: every inline `mw:` marker that
- * belongs to a known note becomes a highlight `<span>` (the easy, read-only direction), and the
- * `mw:log` / `mw:archive` blocks are removed. Markers inside fenced code are left as literal text
- * (parse() flags them). A marker with no matching record — including one sitting inside an inline
- * code span, which parse() does NOT flag as in-fence — is also left untouched as literal text,
- * rather than deleted, so code samples and stray markers survive verbatim. Pure string transform;
- * offsets come from the shared parser so code-fence awareness is exactly the linter's.
- */
-export function injectMarkerSpans(source: string, notes: NoteView[]): string {
-  const byId = new Map(notes.map((n) => [n.id, n]));
-  const doc = parse(source);
+// A single inline marker: `<!-- mw:ID -->` (start/point) or `<!-- /mw:ID -->` (close).
+const MARKER_ONE = /^<!--\s*(\/?)mw:([A-Za-z0-9][A-Za-z0-9_-]*)\s*-->$/;
 
-  // Build replacements keyed by absolute offset, then apply right-to-left so earlier offsets stay
-  // valid as we splice.
-  const edits: Array<{ offset: number; end: number; text: string }> = [];
-  for (const m of doc.markers) {
-    if (m.inCodeFence) continue;
-    const note = byId.get(m.id);
-    if (!note) continue; // orphan / inline-code marker: leave as literal text (don't delete)
-    const typeClass = `mw-type-${note.type}`;
-    if (note.anchorKind === 'point') {
-      edits.push({
-        offset: m.offset,
-        end: m.end,
-        text: `<span class="mw-point ${typeClass}" data-mw-id="${escapeAttr(m.id)}"></span>`,
-      });
-    } else {
-      edits.push({
-        offset: m.offset,
-        end: m.end,
-        text: m.isClose
-          ? '</span>'
-          : `<span class="mw-span ${typeClass}" data-mw-id="${escapeAttr(m.id)}">`,
-      });
-    }
+/** Absolute start offset of every line in `source`. */
+function lineStartOffsets(source: string): number[] {
+  const out: number[] = [];
+  let acc = 0;
+  for (const line of source.split('\n')) {
+    out.push(acc);
+    acc += line.length + 1; // +1 for the '\n' split removed
   }
-
-  edits.sort((a, b) => b.offset - a.offset);
-  let out = source;
-  for (const e of edits) out = out.slice(0, e.offset) + e.text + out.slice(e.end);
-
-  // Remove the log/archive blocks (they hold no inline markers, so this is safe after splicing)
-  // and tidy the trailing whitespace the removed block leaves behind.
-  out = out.replace(BLOCK_RE, '');
-  out = out.replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
-  return out.length > 0 ? out + '\n' : out;
+  return out;
 }
 
-// One shared renderer instance. html:true lets the injected <span>s pass through (the document is
-// the reviewer's own local file, served only to localhost - see the security note in the plan).
+/**
+ * Annotate each inline `text` token with its absolute [s,e) source range. For each inline block we
+ * anchor to the block's first source line via `token.map`, then a cursor + indexOf for each run
+ * (text / code / html-comment content) steps over **bold**, [links](url), `code`, and <!-- markers
+ * --> without needing to know their syntax lengths. Naive indexOf can miss runs containing
+ * backslash-escapes or HTML entities (rare in prose); those runs are simply left without a
+ * breadcrumb, which only means they cannot start a note - acceptable for the thin slice.
+ */
+function annotateInlineOffsets(tokens: Token[], source: string): void {
+  const ls = lineStartOffsets(source);
+  for (const t of tokens) {
+    if (t.type !== 'inline' || !t.map) continue;
+    const base = ls[t.map[0]]!;
+    const blockEnd = ls[t.map[1]] ?? source.length;
+    const slice = source.slice(base, blockEnd);
+    let cursor = 0;
+    for (const c of t.children ?? []) {
+      let needle: string | null = null;
+      if ((c.type === 'text' || c.type === 'code_inline' || c.type === 'html_inline') && c.content) {
+        needle = c.content;
+      }
+      if (needle == null) continue;
+      const at = slice.indexOf(needle, cursor);
+      if (at < 0) continue;
+      if (c.type === 'text') c.meta = { s: base + at, e: base + at + needle.length };
+      cursor = at + needle.length;
+    }
+  }
+}
+
+/** Convert a single `mw:` marker comment to its highlight span. Returns null if not a marker. */
+function convertMarker(raw: string, env: RenderEnv): string | null {
+  const m = MARKER_ONE.exec(raw.trim());
+  if (!m) return null;
+  const isClose = m[1] === '/';
+  const id = m[2]!;
+  const note = env.openById.get(id);
+  if (!note) return raw; // orphan / resolved / unknown: leave the literal comment
+  if (isClose) return '</span>';
+  const typeClass = `mw-type-${note.type}`;
+  if (note.anchorKind === 'point') {
+    return `<span class="mw-point ${typeClass}" data-mw-id="${escapeAttr(id)}"></span>`;
+  }
+  return `<span class="mw-span ${typeClass}" data-mw-id="${escapeAttr(id)}">`;
+}
+
 const md = new MarkdownIt({ html: true, linkify: true, typographer: false });
 
-/** Render a Markwise document to display HTML with highlight spans for the OPEN notes only. */
+// Wrap every text run in an offset breadcrumb (escaped exactly like the default text rule).
+md.renderer.rules.text = (tokens, idx) => {
+  const t = tokens[idx]!;
+  const esc = md.utils.escapeHtml(t.content);
+  const meta = t.meta as { s: number; e: number } | undefined;
+  return meta ? `<span class="mw-run" data-s="${meta.s}" data-e="${meta.e}">${esc}</span>` : esc;
+};
+
+// Inline marker comments become highlight spans; non-marker inline HTML passes through.
+md.renderer.rules.html_inline = (tokens, idx, _opts, env) => {
+  const conv = convertMarker(tokens[idx]!.content, env as RenderEnv);
+  return conv ?? tokens[idx]!.content;
+};
+
+// Drop mw:log / mw:archive blocks; convert a standalone block-position marker; else pass through.
+md.renderer.rules.html_block = (tokens, idx, _opts, env) => {
+  const content = tokens[idx]!.content;
+  if (/^\s*<!--\s*mw:(log|archive)\b/.test(content)) return '';
+  const conv = convertMarker(content, env as RenderEnv);
+  return conv ?? content;
+};
+
+/** Render a Markwise document to display HTML: breadcrumb runs + highlight spans for OPEN notes. */
 export function renderDocumentHtml(source: string): string {
   const open = extractNotes(source).filter((n) => n.state === 'open');
-  return md.render(injectMarkerSpans(source, open));
+  const env: RenderEnv = { openById: new Map(open.map((n) => [n.id, n])) };
+  const tokens = md.parse(source, env);
+  annotateInlineOffsets(tokens, source);
+  return md.renderer.render(tokens, md.options, env);
 }

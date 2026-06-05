@@ -31,6 +31,6 @@ describe('buildDocPayload', () => {
   it('includes rendered html with the highlight span', () => {
     const p = buildDocPayload(DOC, '/tmp/plan.md');
     expect(p.html).toContain('data-mw-id="s1"');
-    expect(p.html).toContain('<h1>Quarterly Plan</h1>');
+    expect(p.html).toContain('Quarterly Plan');
   });
 });
