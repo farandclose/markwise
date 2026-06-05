@@ -56,6 +56,15 @@ describe('createPreviewServer', () => {
     expect(body.html).toContain('data-mw-id="s1"');
   });
 
+  it('includes the agent-handoff ticket in /api/doc', async () => {
+    const base = await start(DOC);
+    const body = await (await fetch(`${base}/api/doc`)).json();
+    expect(body.handoff.waitingCount).toBe(1); // s1 is the agent's turn (brand-new note)
+    expect(body.handoff.text).toContain('1 note is waiting on you');
+    expect(body.handoff.text).toContain('markwise prompt');
+    expect(body.handoff.path).toContain('demo.md');
+  });
+
   it('reflects external edits on the next request (re-reads the file)', async () => {
     const base = await start(DOC);
     writeFileSync(join(dir!, 'demo.md'), '# Changed\n\nNo notes.\n', 'utf8');

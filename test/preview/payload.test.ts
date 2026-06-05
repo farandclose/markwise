@@ -33,4 +33,18 @@ describe('buildDocPayload', () => {
     expect(p.html).toContain('data-mw-id="s1"');
     expect(p.html).toContain('Quarterly Plan');
   });
+
+  it('surfaces a handoff ticket sized to the notes waiting on the agent', () => {
+    const p = buildDocPayload(DOC, '/tmp/plan.md');
+    expect(p.handoff.path).toBe('/tmp/plan.md');
+    expect(p.handoff.waitingCount).toBe(1); // s1 is a new note (agent's turn); s2 is resolved
+    expect(p.handoff.text).toContain('1 note is waiting on you');
+    expect(p.handoff.text).toContain('markwise prompt /tmp/plan.md');
+  });
+
+  it('reports a zero waiting count for a document with no notes', () => {
+    const p = buildDocPayload('Just prose.\n', '/tmp/notes.md');
+    expect(p.handoff.waitingCount).toBe(0);
+    expect(p.handoff.text).toContain('0 notes are waiting on you');
+  });
 });

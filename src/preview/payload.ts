@@ -1,6 +1,8 @@
 import { basename } from 'node:path';
 import { extractNotes } from './notes.js';
 import { renderDocumentHtml } from './render.js';
+import { status } from '../status.js';
+import { buildHandoffText } from './handoff.js';
 import type { DocPayload } from './types.js';
 
 function firstH1(source: string): string | undefined {
@@ -18,10 +20,16 @@ function firstH1(source: string): string | undefined {
  */
 export function buildDocPayload(source: string, filePath: string): DocPayload {
   const open = extractNotes(source).filter((n) => n.state === 'open');
+  const waitingCount = status(source).waitingOnAgent.length;
   return {
     title: firstH1(source) ?? basename(filePath),
     html: renderDocumentHtml(source),
     notes: open,
     openCount: open.length,
+    handoff: {
+      path: filePath,
+      waitingCount,
+      text: buildHandoffText({ path: filePath, waitingCount }),
+    },
   };
 }
