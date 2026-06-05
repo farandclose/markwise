@@ -18,7 +18,7 @@ export interface HandoffInfo {
   path: string;
   /** Open notes that are the agent's turn (status.waitingOnAgent.length). */
   waitingCount: number;
-  /** Ready-to-copy clipboard text built by buildHandoffText. */
+  /** The handoff pickup-ticket text built by buildHandoffText. */
   text: string;
 }
 

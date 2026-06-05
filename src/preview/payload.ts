@@ -14,7 +14,8 @@ function firstH1(source: string): string | undefined {
 }
 
 /**
- * Pure assembler for GET /api/doc: title + rendered HTML + the open notes (document order) + count.
+ * Pure assembler for GET /api/doc: title + rendered HTML + the open notes (document order) + count
+ * + the agent-handoff ticket.
  * Resolved notes are excluded from the rail and the counter in v0 (the archive browse view is
  * deferred - spec section 14); their markers are normally already stripped from the prose on resolve.
  */
