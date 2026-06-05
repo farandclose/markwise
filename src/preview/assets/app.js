@@ -12,10 +12,12 @@
   const titleEl = document.querySelector('.mw-doctitle');
   const counterBtn = document.querySelector('.mw-counter');
   const countEl = document.querySelector('.mw-count');
+  const handoffBtn = document.querySelector('.mw-handoff');
 
   let activeId = null;
   let pendingTarget = null; // { kind:'span'|'point', start, end? } awaiting a draft
   let pillEl = null;
+  let handoff = null; // latest /api/doc handoff bundle { path, waitingCount, text }
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
@@ -52,6 +54,19 @@
     t.textContent = msg;
     t.classList.add('show');
     window.setTimeout(function () { t.classList.remove('show'); }, 3000);
+  }
+
+  // Resolves true if the text reached the clipboard, false otherwise. writeText is initiated
+  // synchronously from the click handler (the text is already in hand), so the user-gesture
+  // context is preserved across browsers.
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(
+        function () { return true; },
+        function () { return false; }
+      );
+    }
+    return Promise.resolve(false);
   }
 
   function send(url, bodyObj) {
@@ -251,6 +266,19 @@
     reveal(body.classList.contains('mw-clean'));
   });
 
+  if (handoffBtn) {
+    handoffBtn.addEventListener('click', function () {
+      if (!handoff || !handoff.text) return;
+      copyToClipboard(handoff.text).then(function (ok) {
+        showToast(
+          ok
+            ? 'Copied - paste into your agent to start the revision pass'
+            : "Couldn't copy - check clipboard permissions"
+        );
+      });
+    });
+  }
+
   function openDraft(target) {
     clearPill();
     if (body.classList.contains('mw-clean')) reveal(true);
@@ -317,6 +345,12 @@
         docEl.innerHTML = payload.html || '';
         countEl.textContent = String(payload.openCount || 0);
         renderRail(payload.notes || []);
+        handoff = payload.handoff || null;
+        if (handoffBtn) {
+          var waiting = !!(handoff && handoff.waitingCount > 0);
+          handoffBtn.disabled = !waiting;
+          handoffBtn.title = waiting ? '' : 'No notes waiting on the agent';
+        }
         // Re-apply the active note if it survived the repaint; otherwise clear it.
         if (activeId != null && railEl.querySelector('.mw-card' + idSel(activeId))) {
           activate(activeId);

@@ -50,15 +50,17 @@ html, body {
   cursor: pointer;
 }
 .mw-counter[aria-pressed="true"] { background: #111; color: #fff; border-color: #111; }
-.mw-done {
-  border: 1px solid var(--mw-line);
-  background: #fff;
+.mw-handoff {
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
   border-radius: 8px;
   padding: 6px 14px;
   font: inherit;
   font-size: 14px;
-  opacity: 0.5;
+  cursor: pointer;
 }
+.mw-handoff:disabled { opacity: 0.4; cursor: default; }
 
 /* Stage: reading column + rail (spec section 1, section 5) */
 .mw-stage { display: flex; justify-content: center; gap: 32px; padding: 48px 24px 120px; }
