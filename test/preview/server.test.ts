@@ -69,6 +69,42 @@ describe('createPreviewServer', () => {
     const res = await fetch(`${base}/nope.txt`);
     expect(res.status).toBe(404);
   });
+
+  it('creates a span comment from a selection and returns the new id', async () => {
+    const base = await start(DOC);
+    const wStart = DOC.indexOf('Ships'); // wrap "Ships"
+    const res = await post(base, '/api/note', { kind: 'span', start: wStart, end: wStart + 5, body: 'fix this' });
+    expect(res.status).toBe(200);
+    const payload = await res.json();
+    expect(payload.createdId).toBe('n1'); // mintId always mints nN; DOC's only id is "s1"
+    expect(payload.openCount).toBe(2);
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).toContain('<!-- mw:n1 -->Ships<!-- /mw:n1 -->');
+  });
+
+  it('creates a point comment at a gap', async () => {
+    const base = await start(DOC);
+    const gap = DOC.indexOf('by'); // a clean inter-word gap, not inside the s1 span
+    const res = await post(base, '/api/note', { kind: 'point', start: gap, body: 'here' });
+    expect(res.status).toBe(200);
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(/"kind":"point"/.test(onDisk)).toBe(true);
+  });
+
+  it('rejects a zero-width span selection (400) and leaves the file byte-identical', async () => {
+    const base = await start(DOC);
+    const original = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    const res = await post(base, '/api/note', { kind: 'span', start: 5, end: 5, body: 'x' });
+    expect(res.status).toBe(400);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(original);
+    // The 422 lint-gate itself is shared persist() behavior, already covered by the reply/resolve tests.
+  });
+
+  it('rejects an empty body', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note', { kind: 'point', start: 3, body: '  ' });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('mutation endpoints', () => {

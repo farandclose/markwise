@@ -6,7 +6,7 @@ import { buildDocPayload } from './payload.js';
 import type { DocPayload } from './types.js';
 import { fixText } from '../fix.js';
 import { lintText } from '../lint.js';
-import { appendReply, resolveNote, NoteMutationError } from './mutate.js';
+import { appendReply, resolveNote, createNote, NoteMutationError } from './mutate.js';
 
 // Static assets live next to the compiled server (dist/preview/assets/, populated by the build's
 // copy step). Resolved relative to this module so it works whether run from source-test or dist.
@@ -91,6 +91,31 @@ export function createPreviewServer(filePath: string): Server {
           }
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify(payload));
+        } catch (err) {
+          const status = err instanceof NoteMutationError ? err.status : 500;
+          const message = err instanceof Error ? err.message : 'error';
+          res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: message }));
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/api/note') {
+        try {
+          const parsed = await readJsonBody(req);
+          const kind = isObj(parsed) && parsed.kind === 'point' ? 'point' : 'span';
+          const start = isObj(parsed) && typeof parsed.start === 'number' ? parsed.start : NaN;
+          const end = isObj(parsed) && typeof parsed.end === 'number' ? parsed.end : undefined;
+          const body = isObj(parsed) && typeof parsed.body === 'string' ? parsed.body : '';
+          const now = new Date().toISOString();
+          let createdId = '';
+          const payload = persist(filePath, (src) => {
+            const r = createNote(src, { kind, start, end, body, at: now });
+            createdId = r.id;
+            return r.output;
+          });
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ...payload, createdId }));
         } catch (err) {
           const status = err instanceof NoteMutationError ? err.status : 500;
           const message = err instanceof Error ? err.message : 'error';
