@@ -296,4 +296,35 @@ describe('createNote', () => {
     const end = FRESH.indexOf('More'); // crosses the <!-- mw:n1 --> marker between the two words
     expect(() => createNote(FRESH, { kind: 'span', start, end, body: 'x', at })).toThrow(NoteMutationError);
   });
+
+  it('allows a span that crosses a section boundary (a heading) and lints clean', async () => {
+    const { fixText } = await import('../../src/fix.js');
+    const { lintText } = await import('../../src/lint.js');
+    const CROSS = [
+      '# Demo',
+      '',
+      'First paragraph ends here.',
+      '',
+      '## Section Two',
+      '',
+      'Second paragraph starts here.',
+      '',
+    ].join('\n');
+    const start = CROSS.indexOf('ends');
+    const end = CROSS.indexOf('starts') + 'starts'.length;
+    const { output, id } = createNote(CROSS, {
+      kind: 'span',
+      start,
+      end,
+      body: 'rethink how these two sections fit',
+      at,
+    });
+    // The marker pair wraps the whole cross-section range, including the heading between the ends.
+    expect(output).toContain(`<!-- mw:${id} -->ends here.`);
+    expect(output).toContain(`starts<!-- /mw:${id} -->`);
+    expect(output).toContain('## Section Two');
+    // The created record is self-correct: fix changes nothing and it lints clean.
+    expect(fixText(output).changes).toEqual([]);
+    expect(lintText(output).filter((f) => f.severity === 'error')).toEqual([]);
+  });
 });
