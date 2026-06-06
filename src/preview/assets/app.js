@@ -374,19 +374,12 @@
     }
   });
 
-  // Cmd+Option+M / Ctrl+Alt+M opens a draft from the current selection (spec section 8).
+  // Esc dismisses a pending pill and clears the selection.
   document.addEventListener('keydown', function (e) {
-    if ((e.metaKey || e.ctrlKey) && e.altKey && (e.key === 'm' || e.key === 'M')) {
+    if (e.key === 'Escape' && pillEl) {
+      clearPill();
       var sel = window.getSelection();
-      if (sel && sel.rangeCount && !sel.isCollapsed) {
-        var r = sel.getRangeAt(0);
-        var s = srcOffset(r.startContainer, r.startOffset);
-        var en = srcOffset(r.endContainer, r.endOffset);
-        if (s != null && en != null && en > s) {
-          e.preventDefault();
-          openDraft({ kind: 'span', start: s, end: en });
-        }
-      }
+      if (sel) sel.removeAllRanges();
     }
   });
 
