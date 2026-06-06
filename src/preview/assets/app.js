@@ -209,16 +209,47 @@
     return null;
   }
 
-  // Read the current selection into a span creation target, or null if it is collapsed or does
-  // not map to source offsets. Drives the mouseup trigger (double-click, triple-click, or drag).
+  // The breadcrumb runs a selection overlaps, in document order. Uses precise boundary-point
+  // comparison rather than Selection.containsNode, which over-reports a block-spanning selection
+  // as touching the next block's run. A run is excluded only if the selection ends at/before the
+  // run's start or begins at/after the run's end; everything else overlaps.
+  function overlappingRuns(range) {
+    return Array.prototype.filter.call(document.querySelectorAll('.mw-run'), function (run) {
+      var rr = document.createRange();
+      rr.selectNodeContents(run);
+      var after = range.compareBoundaryPoints(Range.START_TO_END, rr) <= 0; // selection ends at/before run start
+      var before = range.compareBoundaryPoints(Range.END_TO_START, rr) >= 0; // selection starts at/after run end
+      return !after && !before;
+    });
+  }
+
+  // Resolve one selection endpoint to a source offset within the given run. If the endpoint sits
+  // inside the run, honor its exact character offset; otherwise the endpoint is a block boundary
+  // outside any run (e.g. a triple-click whose end lands on the <p> element), so clamp to the run's
+  // near edge: data-s for the start endpoint, data-e for the end endpoint.
+  function runEndpointOffset(run, container, offset, edge) {
+    var host = container.nodeType === 3 ? container.parentElement : container;
+    var inRun = host && host.closest && host.closest('.mw-run') === run;
+    if (inRun) return parseInt(run.getAttribute('data-s'), 10) + offset;
+    return parseInt(run.getAttribute(edge === 'start' ? 'data-s' : 'data-e'), 10);
+  }
+
+  // Read the current selection into a span creation target, or null if it is collapsed or overlaps
+  // no breadcrumb run. Drives the mouseup trigger (double-click, triple-click, or drag). Deriving
+  // the span from the overlapped runs - not the raw endpoints - is what makes triple-click and
+  // block-spanning drags work: their end boundary lands on a block element, not inside a run.
   function spanTargetFromSelection() {
     var sel = window.getSelection();
     if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
-    var r = sel.getRangeAt(0);
-    var s = srcOffset(r.startContainer, r.startOffset);
-    var en = srcOffset(r.endContainer, r.endOffset);
+    var range = sel.getRangeAt(0);
+    var runs = overlappingRuns(range);
+    if (!runs.length) return null;
+    var first = runs[0];
+    var last = runs[runs.length - 1];
+    var s = runEndpointOffset(first, range.startContainer, range.startOffset, 'start');
+    var en = runEndpointOffset(last, range.endContainer, range.endOffset, 'end');
     if (s != null && en != null && en > s) {
-      return { kind: 'span', start: s, end: en, rect: r.getBoundingClientRect() };
+      return { kind: 'span', start: s, end: en, rect: range.getBoundingClientRect() };
     }
     return null;
   }
