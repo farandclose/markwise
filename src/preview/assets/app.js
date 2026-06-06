@@ -209,25 +209,16 @@
     return null;
   }
 
-  // Read the current double-click result into a creation target, or null if unusable.
-  function targetFromEvent(e) {
+  // Read the current selection into a span creation target, or null if it is collapsed or does
+  // not map to source offsets. Drives the mouseup trigger (double-click, triple-click, or drag).
+  function spanTargetFromSelection() {
     var sel = window.getSelection();
-    if (sel && sel.rangeCount && !sel.isCollapsed) {
-      var r = sel.getRangeAt(0);
-      var s = srcOffset(r.startContainer, r.startOffset);
-      var en = srcOffset(r.endContainer, r.endOffset);
-      if (s != null && en != null && en > s) {
-        return { kind: 'span', start: s, end: en, rect: r.getBoundingClientRect() };
-      }
-      return null;
-    }
-    // Collapsed: double-click on a gap -> a point at the caret.
-    var pos = caretRangeAt(e.clientX, e.clientY);
-    if (pos) {
-      var off = srcOffset(pos.startContainer, pos.startOffset);
-      if (off != null) {
-        return { kind: 'point', start: off, rect: { left: e.clientX, top: e.clientY, width: 0 } };
-      }
+    if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
+    var r = sel.getRangeAt(0);
+    var s = srcOffset(r.startContainer, r.startOffset);
+    var en = srcOffset(r.endContainer, r.endOffset);
+    if (s != null && en != null && en > s) {
+      return { kind: 'span', start: s, end: en, rect: r.getBoundingClientRect() };
     }
     return null;
   }
@@ -364,9 +355,23 @@
       });
   }
 
-  docEl.addEventListener('dblclick', function (e) {
-    var target = targetFromEvent(e);
+  // A completed selection (double-click a word, triple-click a line, or drag a phrase) shows the
+  // pill on mouse release. All three end with a mouseup while a non-collapsed selection exists.
+  docEl.addEventListener('mouseup', function () {
+    var target = spanTargetFromSelection();
     if (target) showPill(target);
+  });
+
+  // A double-click that lands on a gap leaves the selection collapsed; offer a point comment there.
+  // A double-click on a word is non-collapsed and is already handled by the mouseup trigger above.
+  docEl.addEventListener('dblclick', function (e) {
+    if (spanTargetFromSelection()) return;
+    var pos = caretRangeAt(e.clientX, e.clientY);
+    if (!pos) return;
+    var off = srcOffset(pos.startContainer, pos.startOffset);
+    if (off != null) {
+      showPill({ kind: 'point', start: off, rect: { left: e.clientX, top: e.clientY, width: 0 } });
+    }
   });
 
   // Cmd+Option+M / Ctrl+Alt+M opens a draft from the current selection (spec section 8).
