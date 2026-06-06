@@ -357,7 +357,13 @@
 
   // A completed selection (double-click a word, triple-click a line, or drag a phrase) shows the
   // pill on mouse release. All three end with a mouseup while a non-collapsed selection exists.
-  docEl.addEventListener('mouseup', function () {
+  // Listen on the whole document (per the design spec), not just .mw-doc, so a drag that releases
+  // over the rail, a scrollbar, or the margins still surfaces the pill. spanTargetFromSelection()
+  // returns null when the selection's endpoints do not map to .mw-run source offsets, so a
+  // selection outside the document content is a graceful no-op.
+  document.addEventListener('mouseup', function (e) {
+    // A release on the pill itself must not redraw it - let the pill's own click open the draft.
+    if (pillEl && e.target === pillEl) return;
     var target = spanTargetFromSelection();
     if (target) showPill(target);
   });
