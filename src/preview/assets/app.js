@@ -122,8 +122,9 @@
     cancel.addEventListener('click', function (e) { e.stopPropagation(); close(); });
     remove.addEventListener('click', function (e) {
       e.stopPropagation();
-      remove.disabled = true;
-      // send() POSTs then reloads; on success the discarded card is gone, on failure the rail repaints.
+      // Dismiss the confirm (and deregister the Escape listener) before send() -> load() repaints the
+      // rail and discards this DOM, which would otherwise leak the capture-phase keydown listener.
+      close();
       send('/api/note/' + encodeURIComponent(id) + '/discard', null);
     });
     confirm.appendChild(q);
