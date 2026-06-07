@@ -150,17 +150,30 @@ function insertLogRecord(source: string, recordJson: string): string {
 }
 
 /**
- * Create a brand-new reviewer `comment` note. Inserts the marker(s) into the prose and a COMPLETE
+ * Create a brand-new reviewer note. Inserts the marker(s) into the prose and a COMPLETE
  * record (before/after context + span hash computed directly from the source) into mw:log, then
  * returns the new text and the minted id. The record is built correct so the persist pipeline's
  * fixText/lintText are a pure safety net. Pure transform; `at` is the caller-supplied ISO time.
  */
 export function createNote(
   source: string,
-  opts: { kind: 'point' | 'span'; start: number; end?: number; body: string; at: string }
+  opts: {
+    kind: 'point' | 'span';
+    start: number;
+    end?: number;
+    body: string;
+    at: string;
+    type?: 'comment' | 'delete';
+  }
 ): { output: string; id: string } {
+  const type = opts.type ?? 'comment';
   const body = opts.body.trim();
-  if (body === '') throw new NoteMutationError('comment body is empty', 400);
+  // A comment's intent lives in its body, so it is required. A delete's intent is the wrapped span,
+  // so its comment is optional (D27/D42); an empty body yields an empty thread.
+  if (type === 'comment' && body === '') throw new NoteMutationError('comment body is empty', 400);
+  if (type === 'delete' && opts.kind !== 'span') {
+    throw new NoteMutationError('a delete suggestion must wrap a span', 400);
+  }
   const { kind, start } = opts;
   if (!Number.isInteger(start) || start < 0 || start > source.length) {
     throw new NoteMutationError('selection start out of range', 400);
@@ -179,8 +192,7 @@ export function createNote(
   if (kind === 'span') {
     const wrapped = source.slice(start, end!);
     // Refuse a selection that straddles an existing marker: wrapping it would interleave fences,
-    // which lint does not catch for comment notes. (Reachable only via a multi-run Cmd+Option+M
-    // selection; the native double-click stays within one text run.)
+    // which lint does not catch for comment notes.
     if (stripMarkers(wrapped) !== wrapped) {
       throw new NoteMutationError('selection would wrap an existing note marker', 400);
     }
@@ -196,11 +208,11 @@ export function createNote(
 
   const record = {
     id,
-    type: 'comment',
+    type,
     state: 'open',
     disp: 'none',
     anchor,
-    thread: [{ by: 'reviewer', at: opts.at, body }],
+    thread: body === '' ? [] : [{ by: 'reviewer', at: opts.at, body }],
   };
   return { output: insertLogRecord(withMarkers, JSON.stringify(record)), id };
 }

@@ -328,3 +328,48 @@ describe('createNote', () => {
     expect(lintText(output).filter((f) => f.severity === 'error')).toEqual([]);
   });
 });
+
+describe('createNote (delete suggestions)', () => {
+  const at = '2026-06-07T00:00:00Z';
+
+  it('creates a delete note over a span: no text field, empty thread', () => {
+    const wStart = FRESH.indexOf('wedge');
+    const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'delete' });
+    expect(output).toContain(`<!-- mw:${id} -->wedge<!-- /mw:${id} -->`);
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.type).toBe('delete');
+    expect(rec.state).toBe('open');
+    expect(rec.disp).toBe('none');
+    expect(rec.anchor.kind).toBe('span');
+    expect(typeof rec.anchor.hash).toBe('string');
+    expect('text' in rec).toBe(false);
+    expect(rec.thread).toEqual([]);
+  });
+
+  it('seeds a reviewer thread message when a delete carries a comment', () => {
+    const wStart = FRESH.indexOf('wedge');
+    const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: 'redundant', at, type: 'delete' });
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.thread).toEqual([{ by: 'reviewer', at, body: 'redundant' }]);
+  });
+
+  it('rejects a point delete (a delete must wrap a span)', () => {
+    expect(() => createNote(FRESH, { kind: 'point', start: 5, body: '', at, type: 'delete' })).toThrow(NoteMutationError);
+  });
+
+  it('the created delete record is self-correct: fixText changes nothing and it lints clean', async () => {
+    const { fixText } = await import('../../src/fix.js');
+    const { lintText } = await import('../../src/lint.js');
+    const wStart = FRESH.indexOf('wedge');
+    const { output } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'delete' });
+    expect(fixText(output).changes).toEqual([]);
+    expect(lintText(output).filter((f) => f.severity === 'error')).toEqual([]);
+  });
+
+  it('still defaults to a comment when type is omitted', () => {
+    const wStart = FRESH.indexOf('wedge');
+    const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: 'why?', at });
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.type).toBe('comment');
+  });
+});
