@@ -682,3 +682,7 @@ Test count 38 -> 52 (status / prompt / strip each with their own fixtures). Buil
 * * *
 ## Review log
 - **c1** (resolved 2026-05-24) - reviewer asked to remove all em-dashes and use `-` instead. Applied doc-wide; em-dashes replaced with hyphens, the `<->` arrow kept for the manager/knowledge-worker relation.
+
+* * *
+### D42 - Reviewers may author typed suggestions; suggesting is precise intent, not direct editing (2026-06-07)
+Extends D5/D31. The previewer lets a reviewer originate `delete` (this slice) and later `insert`/`replace` suggestions, not only `comment`s. A suggestion is the reviewer stating intent precisely - it is not the reviewer editing the prose. The agent still applies the suggestion, repairs the seam, and may decline or ask for clarification (D31/D32/D11); the thread remains authoritative for intent (D18). Records are byte-identical to agent-authored ones; origin is carried by `thread[0].by` as before. Supersedes the create-note spec's "the reviewer never picks insert/delete/replace," which was a v0 authoring simplification.

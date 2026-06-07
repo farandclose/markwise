@@ -25,7 +25,7 @@ Out of scope (deferred, see the end):
 
 From the parent previewer design (`2026-06-01-previewer-ui-design.md`):
 
-- **Reviewer states intent; the agent revises prose** (D5 / D31). Every reviewer-created note is a plain `comment` anchored to the selection. The reviewer never picks `insert` / `delete` / `replace`; they write what they mean ("add a line about X here", "cut this", "reword to Y") and the agent interprets intent.
+- **Reviewer states intent; the agent revises prose** (D5 / D31). At the time of this slice every reviewer-created note was a plain `comment`. Superseded by **D42**: a reviewer may now also *suggest* `delete` / `insert` / `replace` as a precise statement of intent. Either way the reviewer never edits the prose directly - the agent applies the suggestion, repairs the seam, and may decline (D31/D32).
 - **Placing a caret while reading must not nag** (parent section 7). A single click places a caret only - no pill, no note.
 - **One write path, lint is the safety net** (M2). Create flows through the same `persist()` pipeline as reply and resolve; the file is byte-identical if anything is wrong.
 
