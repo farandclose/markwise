@@ -42,7 +42,12 @@
     if (note.type === 'insert' || note.type === 'replace') {
       return note.text ? '"' + note.text + '"' : '';
     }
-    const last = note.thread[note.thread.length - 1];
+    if (note.type === 'delete') {
+      var el = docEl.querySelector(idSel(note.id));
+      var txt = el ? el.textContent : '';
+      return txt ? '"' + txt + '"' : '';
+    }
+    var last = note.thread[note.thread.length - 1];
     return last ? last.body : '';
   }
 
@@ -87,6 +92,47 @@
       .catch(function (err) { showToast(err.message || 'Action failed'); });
   }
 
+  // The x on a delete card: reveal an inline "Remove this suggestion?" confirm (never a browser
+  // confirm() dialog). Remove -> discard the note (restores the prose); Cancel/Esc -> back out.
+  function openDiscardConfirm(card, id, discardBtn) {
+    if (card.querySelector('.mw-discard-confirm')) return;
+    discardBtn.style.visibility = 'hidden';
+    var confirm = document.createElement('div');
+    confirm.className = 'mw-discard-confirm';
+    var q = document.createElement('span');
+    q.className = 'mw-discard-q';
+    q.textContent = 'Remove this suggestion?';
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'mw-discard-cancel';
+    cancel.textContent = 'Cancel';
+    var remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'mw-discard-remove';
+    remove.textContent = 'Remove';
+
+    function close() {
+      confirm.remove();
+      discardBtn.style.visibility = '';
+      document.removeEventListener('keydown', onKey, true);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    }
+    cancel.addEventListener('click', function (e) { e.stopPropagation(); close(); });
+    remove.addEventListener('click', function (e) {
+      e.stopPropagation();
+      remove.disabled = true;
+      // send() POSTs then reloads; on success the discarded card is gone, on failure the rail repaints.
+      send('/api/note/' + encodeURIComponent(id) + '/discard', null);
+    });
+    confirm.appendChild(q);
+    confirm.appendChild(cancel);
+    confirm.appendChild(remove);
+    card.insertBefore(confirm, card.querySelector('.mw-thread'));
+    document.addEventListener('keydown', onKey, true);
+  }
+
   function renderRail(notes) {
     railEl.innerHTML = '';
     notes.forEach(function (note) {
@@ -100,6 +146,20 @@
         '<span class="mw-card-type">' + esc(note.type) + '</span>' +
         '<span class="mw-card-snippet">' + esc(noteSnippet(note)) + '</span>';
       card.appendChild(head);
+
+      if (note.type === 'delete') {
+        const discardBtn = document.createElement('button');
+        discardBtn.type = 'button';
+        discardBtn.className = 'mw-card-discard';
+        discardBtn.title = 'Discard this suggestion';
+        discardBtn.setAttribute('aria-label', 'Discard this suggestion');
+        discardBtn.textContent = '×';
+        discardBtn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          openDiscardConfirm(card, note.id, discardBtn);
+        });
+        head.appendChild(discardBtn);
+      }
 
       const threadEl = document.createElement('div');
       threadEl.className = 'mw-thread';
@@ -425,6 +485,27 @@
     } catch (_) {}
   }
 
+  // Pressing Delete on a selection proposes deleting that span. No body (a comment is optional and
+  // can be added later via the card's Reply). The text stays in the file; the agent removes it.
+  function createDelete(target) {
+    var sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+    fetch('/api/note', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'delete', kind: 'span', start: target.start, end: target.end }),
+    })
+      .then(function (r) {
+        if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Delete failed'); });
+        return r.json();
+      })
+      .then(function (data) {
+        if (data && data.createdId) activeId = data.createdId;
+        return load();
+      })
+      .catch(function (err) { showToast(err.message || 'Delete failed'); });
+  }
+
   function openDraft(target) {
     // Capture the live selection range before clearing the pill or focusing the textarea, so the
     // anchor highlight can use precise per-line rects.
@@ -538,6 +619,20 @@
     if (pillEl && e.target === pillEl) return;
     var target = spanTargetFromSelection();
     if (target) showPill(target);
+  });
+
+  // Pressing Delete or Backspace on a non-collapsed selection proposes deleting that span. Ignored
+  // while focus is in a textarea/input (so editing a draft or reply with Backspace is never
+  // hijacked). A collapsed caret + Delete is a no-op in this slice (it is the future insert gesture).
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+    var ae = document.activeElement;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
+    var target = spanTargetFromSelection();
+    if (!target) return; // collapsed or non-mappable selection: let the key behave normally
+    e.preventDefault();
+    clearPill();
+    createDelete(target);
   });
 
   // A double-click that lands on a gap leaves the selection collapsed; offer a point comment there.

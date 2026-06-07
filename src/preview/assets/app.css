@@ -521,3 +521,41 @@ html, body {
 .mw-draft-actions button { border: 1px solid var(--mw-line); background: var(--mw-surface); color: var(--mw-ink); border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
 .mw-draft-actions button:hover { background: var(--mw-hover-tint); }
 .mw-draft-add { border-color: var(--mw-ink); }
+
+/* Discard (x) on a delete suggestion card, and its inline confirm. */
+.mw-card-discard {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--mw-muted);
+  font-size: 17px;
+  line-height: 1;
+  padding: 0 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mw-card-discard:hover { color: var(--mw-ink); background: var(--mw-hover-tint); }
+.mw-card-discard:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
+
+.mw-discard-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--mw-muted);
+}
+.mw-discard-q { margin-right: auto; }
+.mw-discard-confirm button {
+  border: 1px solid var(--mw-line);
+  background: var(--mw-surface);
+  color: var(--mw-ink);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mw-discard-confirm button:hover { background: var(--mw-hover-tint); }
+.mw-discard-confirm button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
+.mw-discard-remove { border-color: var(--mw-error); color: var(--mw-error); }
