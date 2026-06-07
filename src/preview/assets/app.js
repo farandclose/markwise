@@ -239,7 +239,7 @@
     if (!notes.length) {
       const empty = document.createElement('p');
       empty.className = 'mw-rail-empty';
-      empty.textContent = 'Select text to comment.';
+      empty.textContent = 'Select text to comment, or press Delete to suggest a deletion.';
       railEl.appendChild(empty);
     }
   }
