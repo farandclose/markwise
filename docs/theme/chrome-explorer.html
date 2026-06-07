@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Markwise — Chrome / Accent Explorer (P2)</title>
+    <style>
+      /* Theme P2 design step. The annotation palette already owns amber (comment),
+         green (insert), blue (replace) and red (delete). The chrome "accent" — the one
+         color that means "this is the action / this is selected / this is focused" — must
+         live OUTSIDE those four hues. The only open band is violet/magenta, or no hue at all.
+         Two columns compare the poles:
+           · VIOLET   — a real accent: chrome gets a recognizable interactive color.
+           · NEUTRAL  — no hue: lift off pure black but stay achromatic ("the tool disappears").
+         The side-stripe fix and the strengthened insert pillar appear in BOTH (they are
+         hue-independent). Use ?theme=dark|light. Dark is the hero. System fonts only. */
+
+      /* ---- Base surface tokens (mirror app.css) ---- */
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #16171a; --surface: #1e1f23; --toolbar: rgba(22,23,26,0.88);
+        --ink: #e8e8eb; --muted: #9a9ba2; --line: #2a2b30; --line-strong: #3c3d44;
+        --shadow: 0 10px 30px rgba(0,0,0,0.45);
+        --insert: #35d6a0;
+        --comment: rgba(245,205,90,0.22);
+      }
+      :root[data-theme="light"] {
+        color-scheme: light;
+        --bg: #ffffff; --surface: #ffffff; --toolbar: rgba(255,255,255,0.9);
+        --ink: #1d1d1f; --muted: #6b6b70; --line: #e6e6e8; --line-strong: #d4d4d8;
+        --shadow: 0 2px 10px rgba(0,0,0,0.06);
+        --insert: #1f8f4e;
+        --comment: #fff3c4;
+      }
+
+      /* ---- Accent token sets (the thing under test) ---- */
+      /* VIOLET: clearly purple, well clear of the azure replace-blue. */
+      :root[data-theme="dark"] .col-violet {
+        --acc: #8f7ff2; --acc-ink: #17151f; --acc-hover: #a294f5;
+        --acc-weak: rgba(143,127,242,0.18); --acc-ring: rgba(143,127,242,0.50);
+      }
+      :root[data-theme="light"] .col-violet {
+        --acc: #6743d6; --acc-ink: #ffffff; --acc-hover: #5836c0;
+        --acc-weak: rgba(103,67,214,0.10); --acc-ring: rgba(103,67,214,0.38);
+      }
+      /* NEUTRAL: today's inverted-ink action, lifted off pure black, no hue. */
+      :root[data-theme="dark"] .col-neutral {
+        --acc: #e8e8eb; --acc-ink: #16171a; --acc-hover: #ffffff;
+        --acc-weak: rgba(232,232,235,0.14); --acc-ring: rgba(232,232,235,0.40);
+      }
+      :root[data-theme="light"] .col-neutral {
+        --acc: #1d1d1f; --acc-ink: #ffffff; --acc-hover: #000000;
+        --acc-weak: rgba(29,29,31,0.07); --acc-ring: rgba(29,29,31,0.30);
+      }
+
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; background: var(--bg); color: var(--ink);
+        font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .page { max-width: 1080px; margin: 0 auto; padding: 40px 28px 80px; }
+      .page > h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 4px; }
+      .page > p.sub { color: var(--muted); margin: 0 0 32px; font-size: 14px; }
+
+      .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+      .col { border: 1px solid var(--line); border-radius: 14px; padding: 22px; background: var(--bg); }
+      .col-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 18px; }
+      .col-label b { color: var(--ink); font-weight: 700; letter-spacing: -0.01em; text-transform: none; font-size: 14px; display: block; }
+      .group { margin-bottom: 22px; }
+      .group > .gl { font-size: 11px; color: var(--muted); margin: 0 0 9px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+      /* ---- Toolbar sampler ---- */
+      .bar { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--toolbar); border: 1px solid var(--line); border-radius: 10px; }
+      .bar .wm { font-weight: 700; letter-spacing: -0.01em; font-size: 14px; margin-right: auto; }
+      .counter { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; }
+      .counter.on { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }   /* selected/toggled */
+      .handoff { border: 1px solid var(--acc); background: var(--acc); color: var(--acc-ink); border-radius: 8px; padding: 6px 13px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+      .handoff:hover { background: var(--acc-hover); border-color: var(--acc-hover); }
+
+      /* ---- Focus ring (NEW in P2 — none exists today) ---- */
+      .ring-demo { display: inline-flex; }
+      .ring-demo .handoff { box-shadow: 0 0 0 3px var(--acc-ring); }
+
+      /* ---- Comment pill ---- */
+      .pillwrap { position: relative; display: inline-block; padding-top: 6px; }
+      .pill { background: var(--acc); color: var(--acc-ink); border: none; border-radius: 999px; padding: 6px 13px; font: inherit; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+
+      /* ---- Note card with thread (side-stripe REMOVED) ---- */
+      .card { border: 1px solid var(--acc); border-radius: 10px; background: var(--surface); padding: 12px 14px; box-shadow: var(--shadow); }   /* active card: accent border, not pure black */
+      .card-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+      .card-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 999px; padding: 1px 7px; }
+      .card-snippet { color: var(--ink); font-size: 13px; }
+      .msg { padding: 9px 0; border-top: 1px solid var(--line); }
+      .msg-meta { display: flex; align-items: center; gap: 7px; font-size: 12px; margin-bottom: 3px; }
+      .dot { width: 6px; height: 6px; border-radius: 999px; flex: 0 0 auto; }
+      .msg.reviewer .dot { background: var(--acc); }
+      .msg.agent .dot { background: var(--muted); }
+      .msg.reviewer .by { color: var(--ink); font-weight: 600; }
+      .msg.agent .by { color: var(--muted); font-weight: 600; }
+      .msg .when { color: var(--muted); margin-left: auto; }
+      .msg-body { font-size: 13.5px; }
+      .verbs { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+      .verbs button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+      .verbs .primary { border-color: var(--acc); color: var(--acc); }   /* resolve / add: accent outline, not ink */
+      .verbs .primary:hover { background: var(--acc-weak); }
+
+      /* ---- Insert pillar: current vs strengthened (green stays; hue-independent) ---- */
+      .proseline { font: 15px/1.7 "Iowan Old Style","Charter","Palatino",Georgia,serif; }
+      .point-old { display: inline-block; width: 3px; height: 1.1em; vertical-align: text-bottom; margin: 0 1px; border-radius: 2px; background: var(--insert); }
+      .point-new { display: inline-block; width: 4px; height: 1.2em; vertical-align: text-bottom; margin: 0 2px; border-radius: 2px; background: var(--insert); box-shadow: 0 0 0 2px color-mix(in srgb, var(--insert) 22%, transparent); }
+      .anno { background: var(--comment); border-radius: 3px; padding: 0 1px; }
+
+      .note { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>Markwise chrome — accent decision (P2)</h1>
+      <p class="sub" id="sub"></p>
+
+      <div class="cols">
+        <!-- VIOLET -->
+        <section class="col col-violet">
+          <p class="col-label">Option A<b>Violet accent — a real chrome color</b></p>
+
+          <div class="group">
+            <p class="gl">Toolbar · notes toggled on + primary action</p>
+            <div class="bar"><span class="wm">Markwise</span><button class="counter on">6 notes</button><button class="handoff">Hand to agent</button></div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Focus ring (keyboard) — new in P2</p>
+            <div class="ring-demo"><button class="handoff">Hand to agent</button></div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Comment pill</p>
+            <div class="pillwrap"><button class="pill">Comment</button></div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Active note card · thread (no side-stripe) · resolve</p>
+            <div class="card">
+              <div class="card-head"><span class="card-type">Comment</span><span class="card-snippet">write once, review anywhere</span></div>
+              <div class="msg reviewer"><div class="msg-meta"><span class="dot"></span><span class="by">Reviewer</span><span class="when">2h ago</span></div><div class="msg-body">Can we tighten this promise to one sentence?</div></div>
+              <div class="msg agent"><div class="msg-meta"><span class="dot"></span><span class="by">Agent</span><span class="when">1h ago</span></div><div class="msg-body">Done — folded it into the opening line.</div></div>
+              <div class="verbs"><button>Reply</button><button class="primary">Resolve</button></div>
+            </div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Insert pillar · current (3px) vs strengthened (4px + halo)</p>
+            <p class="proseline">It ships by Q3<span class="point-old"></span> of next year, with the <span class="anno">editor plugins</span><span class="point-new"></span> landing first.</p>
+          </div>
+        </section>
+
+        <!-- NEUTRAL -->
+        <section class="col col-neutral">
+          <p class="col-label">Option B<b>Neutral accent — no hue, tool disappears</b></p>
+
+          <div class="group">
+            <p class="gl">Toolbar · notes toggled on + primary action</p>
+            <div class="bar"><span class="wm">Markwise</span><button class="counter on">6 notes</button><button class="handoff">Hand to agent</button></div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Focus ring (keyboard) — new in P2</p>
+            <div class="ring-demo"><button class="handoff">Hand to agent</button></div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Comment pill</p>
+            <div class="pillwrap"><button class="pill">Comment</button></div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Active note card · thread (no side-stripe) · resolve</p>
+            <div class="card">
+              <div class="card-head"><span class="card-type">Comment</span><span class="card-snippet">write once, review anywhere</span></div>
+              <div class="msg reviewer"><div class="msg-meta"><span class="dot"></span><span class="by">Reviewer</span><span class="when">2h ago</span></div><div class="msg-body">Can we tighten this promise to one sentence?</div></div>
+              <div class="msg agent"><div class="msg-meta"><span class="dot"></span><span class="by">Agent</span><span class="when">1h ago</span></div><div class="msg-body">Done — folded it into the opening line.</div></div>
+              <div class="verbs"><button>Reply</button><button class="primary">Resolve</button></div>
+            </div>
+          </div>
+
+          <div class="group">
+            <p class="gl">Insert pillar · current (3px) vs strengthened (4px + halo)</p>
+            <p class="proseline">It ships by Q3<span class="point-old"></span> of next year, with the <span class="anno">editor plugins</span><span class="point-new"></span> landing first.</p>
+          </div>
+        </section>
+      </div>
+
+      <p class="note">Side-stripe (2px <code>border-left</code>) is gone in both: speaker is now a leading dot + label weight. The insert pillar and the comment/replace/delete tints keep their own hues regardless of which accent wins — the accent only colors chrome (action / selected / focused).</p>
+    </div>
+
+    <script>
+      const t = new URLSearchParams(location.search).get("theme") || "dark";
+      document.documentElement.dataset.theme = t;
+      document.getElementById("sub").textContent =
+        (t === "dark" ? "Dark (hero)" : "Light") + " — which accent should the chrome use? The annotation hues (amber/green/blue/red) are reserved; the accent must sit outside them.";
+    </script>
+  </body>
+</html>

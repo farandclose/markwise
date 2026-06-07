@@ -17,11 +17,18 @@
   --mw-muted: #6b6b70;
   --mw-line: #e6e6e8;
 
-  /* Strong/inverted action pair (handoff, pressed counter, toast, pill) */
-  --mw-primary-bg: #111111;
+  /* Strong action pair (handoff, pressed counter, toast, pill). Neutral, lifted off pure
+     black: the chrome stays achromatic but no longer borrows #000/#111 ("the tool disappears"). */
+  --mw-primary-bg: #1d1d1f;
   --mw-primary-ink: #ffffff;
-  --mw-card-active-border: #111111;
+  --mw-primary-hover: #000000;            /* primary action hover: deepen to full strength */
+  --mw-card-active-border: #1d1d1f;       /* selected card / active note: neutral, not pure black */
   --mw-shadow-card: 0 2px 10px rgba(0, 0, 0, 0.06);
+
+  /* Interaction states (P2): a hover tint for quiet/outline controls + a keyboard focus ring.
+     Neutral by choice - the chrome carries no hue; annotations keep theirs. */
+  --mw-hover-tint: rgba(29, 29, 31, 0.06);
+  --mw-focus-ring: rgba(29, 29, 31, 0.32);
 
   /* Code */
   --mw-code-bg: #f5f5f7;
@@ -65,8 +72,12 @@
 
   --mw-primary-bg: #e8e8eb;
   --mw-primary-ink: #16171a;
-  --mw-card-active-border: #50515a;
+  --mw-primary-hover: #ffffff;            /* deepen to full strength on dark */
+  --mw-card-active-border: #6c6d77;       /* lifted so a selected card actually reads */
   --mw-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  --mw-hover-tint: rgba(232, 232, 235, 0.12);
+  --mw-focus-ring: rgba(232, 232, 235, 0.40);
 
   --mw-code-bg: #1e1f23;
   --mw-code-inline-bg: #24252b;
@@ -119,6 +130,7 @@ html, body {
   font-size: 14px;
   cursor: pointer;
 }
+.mw-counter:hover:not([aria-pressed="true"]) { border-color: var(--mw-muted); }
 .mw-counter[aria-pressed="true"] { background: var(--mw-primary-bg); color: var(--mw-primary-ink); border-color: var(--mw-primary-bg); }
 .mw-handoff {
   border: 1px solid var(--mw-primary-bg);
@@ -131,6 +143,28 @@ html, body {
   cursor: pointer;
 }
 .mw-handoff:disabled { opacity: 0.4; cursor: default; }
+.mw-handoff:hover:not(:disabled) { background: var(--mw-primary-hover); border-color: var(--mw-primary-hover); }
+.mw-handoff:active:not(:disabled) { transform: translateY(1px); }
+
+/* Keyboard focus: one consistent neutral ring across every interactive control (P2). Uses
+   :focus-visible so it shows for keyboard/AT users and never on a mouse click. There is no
+   focus vocabulary today at all - this hardens the keyboard path PRODUCT.md flagged. */
+.mw-counter:focus-visible,
+.mw-handoff:focus-visible,
+.mw-theme:focus-visible,
+.mw-pill:focus-visible,
+.mw-verbs button:focus-visible,
+.mw-draft-actions button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--mw-focus-ring);
+}
+/* Text inputs: border firms to ink + the same ring (no focus style exists today). */
+.mw-reply:focus-visible,
+.mw-draft textarea:focus-visible {
+  outline: none;
+  border-color: var(--mw-ink);
+  box-shadow: 0 0 0 3px var(--mw-focus-ring);
+}
 
 /* Quiet appearance toggle: one small control that cycles the theme list
    (dark -> light, extensible to more). Restrained per "the tool disappears". */
@@ -219,12 +253,14 @@ html, body {
 
 .mw-revealed .mw-point {
   display: inline-block;
-  width: 3px;
-  height: 1.1em;
+  width: 4px;
+  height: 1.2em;
   vertical-align: text-bottom;
-  margin: 0 1px;
+  margin: 0 2px;
   border-radius: 2px;
   background: var(--mw-insert);
+  /* A soft halo lifts the pillar from the weakest mark to a legible insert point. */
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mw-insert) 22%, transparent);
   cursor: pointer;
 }
 
@@ -274,14 +310,25 @@ html, body {
 
 .mw-error { color: var(--mw-error); }
 
-/* Per-speaker thread distinction (M2): the reviewer's own messages read stronger than the agent's */
-.mw-msg.mw-by-reviewer { border-left: 2px solid var(--mw-ink); padding-left: 8px; }
-.mw-msg.mw-by-agent { border-left: 2px solid var(--mw-line); padding-left: 8px; }
+/* Per-speaker thread distinction (M2, retuned P2): a quiet leading dot + label weight tells the
+   reviewer from the agent. No side-stripe - a >1px colored border-left reads as a defect, never
+   intentional, so it is replaced rather than recolored. */
+.mw-msg-by { display: inline-flex; align-items: center; gap: 7px; }
+.mw-msg-by::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--mw-muted);
+  flex: 0 0 auto;
+}
 .mw-msg.mw-by-reviewer .mw-msg-by { color: var(--mw-ink); }
+.mw-msg.mw-by-reviewer .mw-msg-by::before { background: var(--mw-ink); }
 .mw-msg.mw-by-agent .mw-msg-by { color: var(--mw-muted); }
 
 /* Live verb buttons (M2) */
 .mw-verbs button { cursor: pointer; }
+.mw-verbs button:hover:not(:disabled) { background: var(--mw-hover-tint); }
 .mw-verbs button:disabled { opacity: 0.5; cursor: default; }
 .mw-resolve-btn { border-color: var(--mw-ink); }
 
@@ -330,6 +377,9 @@ html, body {
   border: 5px solid transparent;
   border-top-color: var(--mw-primary-bg);
 }
+.mw-pill:hover { background: var(--mw-primary-hover); }
+.mw-pill:hover::after { border-top-color: var(--mw-primary-hover); }
+.mw-pill:active { transform: translate(-50%, calc(-100% + 1px)); }
 
 /* Persistent highlight over the text a draft is anchored to (the comment's source). */
 .mw-anchor {
@@ -378,4 +428,5 @@ html, body {
 }
 .mw-draft-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 .mw-draft-actions button { border: 1px solid var(--mw-line); background: var(--mw-surface); color: var(--mw-ink); border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.mw-draft-actions button:hover { background: var(--mw-hover-tint); }
 .mw-draft-add { border-color: var(--mw-ink); }
