@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" data-type="current">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Markwise — Type Explorer</title>
+    <style>
+      /* Theme P1 typography comparison. Dark surface (the hero) held constant; only the
+         DOCUMENT column's type changes between ?type=current | display | serif. Chrome stays
+         system sans in all three (the rule: serif may live in the doc, never in the chrome).
+         Zero web-font dependency: system stacks only. */
+      :root {
+        --mw-bg: #16171a; --mw-surface: #1e1f23; --mw-ink: #e8e8eb; --mw-muted: #9a9ba2;
+        --mw-line: #2a2b30; --mw-line-strong: #3c3d44; --mw-primary-bg: #e8e8eb; --mw-primary-ink: #16171a;
+        --mw-comment: rgba(245,205,90,0.22); --mw-comment-deep: rgba(245,205,90,0.38);
+        --mw-replace: rgba(96,165,250,0.16); --mw-replace-line: #74a9f0;
+        --mw-delete: rgba(255,107,107,0.15); --mw-insert: #35d6a0;
+        --mw-col: 680px; --mw-rail-w: 320px;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --serif: "Iowan Old Style", "Charter", "Palatino", Georgia, Cambria, "Times New Roman", serif;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; background: var(--mw-bg); color: var(--mw-ink);
+        font: 16px/1.7 var(--sans); -webkit-font-smoothing: antialiased;
+      }
+
+      /* Chrome (always sans) */
+      .mw-toolbar {
+        position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 24px; background: rgba(22,23,26,0.88); backdrop-filter: saturate(150%) blur(8px);
+        border-bottom: 1px solid var(--mw-line);
+      }
+      .mw-wordmark { font-weight: 700; letter-spacing: -0.01em; }
+      .mw-doctitle { margin-left: 12px; color: var(--mw-muted); }
+      .mw-tools { display: flex; align-items: center; gap: 12px; }
+      .mw-counter { border: 1px solid var(--mw-line-strong); background: var(--mw-surface); color: var(--mw-ink); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 14px; }
+      .mw-handoff { border: none; background: var(--mw-primary-bg); color: var(--mw-primary-ink); border-radius: 8px; padding: 7px 14px; font: inherit; font-size: 14px; font-weight: 600; }
+
+      .mw-stage {
+        display: grid; grid-template-columns: var(--mw-rail-w) minmax(0, var(--mw-col)) var(--mw-rail-w);
+        justify-content: center; gap: 32px; padding: 44px 24px 120px;
+      }
+      .mw-doc { grid-column: 2; width: 100%; max-width: var(--mw-col); }
+      .mw-doc p { margin: 0 0 1.1em; }
+
+      /* ---- Treatment: current (system sans, the baseline) ---- */
+      [data-type="current"] .mw-doc { font-family: var(--sans); font-size: 16px; line-height: 1.7; }
+      [data-type="current"] .mw-doc h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; margin: 0 0 0.6em; }
+      [data-type="current"] .mw-doc h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.01em; margin: 1.8em 0 0.5em; }
+
+      /* ---- Treatment: display (sans body, stronger display headings for hierarchy) ---- */
+      [data-type="display"] .mw-doc { font-family: var(--sans); font-size: 16px; line-height: 1.7; }
+      [data-type="display"] .mw-doc h1 { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.038em; line-height: 1.1; margin: 0 0 0.5em; }
+      [data-type="display"] .mw-doc h2 { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.022em; margin: 2.1em 0 0.5em; }
+
+      /* ---- Treatment: serif (serif reading column, sans headings — editorial inversion) ---- */
+      [data-type="serif"] .mw-doc { font-family: var(--serif); font-size: 17.5px; line-height: 1.72; }
+      [data-type="serif"] .mw-doc h1 { font-family: var(--sans); font-size: 2.15rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; margin: 0 0 0.55em; }
+      [data-type="serif"] .mw-doc h2 { font-family: var(--sans); font-size: 1.45rem; font-weight: 700; letter-spacing: -0.015em; margin: 1.9em 0 0.5em; }
+
+      /* Annotations */
+      .mw-span { border-radius: 3px; padding: 0 1px; }
+      .mw-type-comment { background: var(--mw-comment); }
+      .mw-type-replace { background: var(--mw-replace); text-decoration: underline; text-decoration-color: var(--mw-replace-line); text-underline-offset: 2px; }
+      .mw-type-delete { background: var(--mw-delete); text-decoration: line-through; }
+      .mw-point { display: inline-block; width: 3px; height: 1.1em; vertical-align: text-bottom; margin: 0 1px; border-radius: 2px; background: var(--mw-insert); }
+
+      /* Rail (always sans) */
+      .mw-rail { grid-column: 3; width: var(--mw-rail-w); }
+      .mw-card { border: 1px solid var(--mw-line); border-radius: 10px; background: var(--mw-surface); padding: 12px 14px; margin-bottom: 12px; }
+      .mw-card-head { display: flex; gap: 8px; align-items: baseline; }
+      .mw-card-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mw-muted); border: 1px solid var(--mw-line-strong); border-radius: 999px; padding: 1px 7px; flex: 0 0 auto; }
+      .mw-card-snippet { color: var(--mw-ink); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      .mw-label { position: fixed; left: 16px; bottom: 16px; z-index: 30; font-size: 12px; color: var(--mw-muted); background: var(--mw-surface); border: 1px solid var(--mw-line); border-radius: 999px; padding: 5px 12px; }
+    </style>
+  </head>
+  <body>
+    <header class="mw-toolbar">
+      <div class="mw-brand"><span class="mw-wordmark">Markwise</span><span class="mw-doctitle">sample.md</span></div>
+      <div class="mw-tools">
+        <button type="button" class="mw-counter">6 notes</button>
+        <button type="button" class="mw-handoff">Hand to agent</button>
+      </div>
+    </header>
+
+    <main class="mw-stage">
+      <article class="mw-doc">
+        <h1>Nimbus — Product Brief</h1>
+        <h2>Overview</h2>
+        <p>Nimbus is a collaborative notebook for small product teams who live in markdown. It ships by <span class="mw-span mw-type-replace">Q3</span> of next year.<span class="mw-point"></span></p>
+        <p>The core promise is simple: <span class="mw-span mw-type-comment">write once, review anywhere</span>. Reviewers comment inline, and an agent applies the edits to the prose so the document stays the single source of truth.</p>
+        <h2>Market</h2>
+        <p>The market is <span class="mw-span mw-type-delete">large and growing</span>. Our wedge is teams already drafting specs in plain text, where the review loop today is copy-paste and lossy.</p>
+        <h2>Pricing</h2>
+        <p>We will charge a flat <span class="mw-span mw-type-replace">$12 per seat</span> per month, billed annually.</p>
+        <h2>Open Risks</h2>
+        <p>Adoption hinges on the editor integrations landing on schedule.</p>
+      </article>
+
+      <aside class="mw-rail">
+        <div class="mw-card"><div class="mw-card-head"><span class="mw-card-type">Replace</span><span class="mw-card-snippet">Q3 → Q4</span></div></div>
+        <div class="mw-card"><div class="mw-card-head"><span class="mw-card-type">Comment</span><span class="mw-card-snippet">write once, review anywhere</span></div></div>
+        <div class="mw-card"><div class="mw-card-head"><span class="mw-card-type">Delete</span><span class="mw-card-snippet">large and growing</span></div></div>
+      </aside>
+    </main>
+
+    <div class="mw-label" id="label"></div>
+    <script>
+      const t = new URLSearchParams(location.search).get("type") || "current";
+      document.documentElement.dataset.type = t;
+      const names = { current: "1 · Sans (current)", display: "2 · Sans + display headings", serif: "3 · Serif reading column" };
+      document.getElementById("label").textContent = names[t] || t;
+    </script>
+  </body>
+</html>
