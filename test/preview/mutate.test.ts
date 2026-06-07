@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { appendReply, resolveNote, createNote, NoteMutationError } from '../../src/preview/mutate.js';
+import { appendReply, resolveNote, createNote, discardNote, NoteMutationError } from '../../src/preview/mutate.js';
 
 const DOC = [
   '# Demo',
@@ -371,5 +371,63 @@ describe('createNote (delete suggestions)', () => {
     const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: 'why?', at });
     const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
     expect(rec.type).toBe('comment');
+  });
+});
+
+describe('discardNote', () => {
+  const SPAN = [
+    '# Demo',
+    '',
+    'Ships by <!-- mw:s1 -->Q3<!-- /mw:s1 -->.',
+    '',
+    'Keep.<!-- mw:p2 -->',
+    '',
+    '<!-- mw:log v=1',
+    '{"id":"s1","type":"delete","state":"open","disp":"none","anchor":{"kind":"span","hash":"0","before":"by ","after":"."},"thread":[]}',
+    '{"id":"p2","type":"comment","state":"open","disp":"none","anchor":{"kind":"point","before":".","after":""},"thread":[{"by":"reviewer","at":"2026-06-01T10:00:00Z","body":"keep"}]}',
+    '-->',
+    '',
+  ].join('\n');
+
+  it('strips the note markers (restoring prose) and drops the record, with no archive', () => {
+    const out = discardNote(SPAN, 's1');
+    expect(out).toContain('Ships by Q3.');
+    expect(out).not.toContain('mw:s1');
+    expect(out).not.toContain('"id":"s1"');
+    expect(out).not.toContain('mw:archive'); // discard erases; it does not archive
+    expect(out).toContain('"id":"p2"'); // the untouched note survives
+    expect(out).toContain('mw:p2');
+  });
+
+  it('drops the whole log block when discarding the only note', () => {
+    const ONLY = [
+      'A <!-- mw:n1 -->word<!-- /mw:n1 --> here.',
+      '<!-- mw:log v=1',
+      '{"id":"n1","type":"delete","state":"open","disp":"none","anchor":{"kind":"span","hash":"0","before":"A ","after":" here"},"thread":[]}',
+      '-->',
+      '',
+    ].join('\n');
+    const out = discardNote(ONLY, 'n1');
+    expect(out).toContain('A word here.');
+    expect(out).not.toContain('mw:log');
+    expect(out).not.toContain('mw:n1');
+  });
+
+  it('round-trips clean: the discarded result lints clean and fixText changes nothing', async () => {
+    const { fixText } = await import('../../src/fix.js');
+    const { lintText } = await import('../../src/lint.js');
+    const out = discardNote(SPAN, 's1');
+    expect(fixText(out).changes).toEqual([]);
+    expect(lintText(out).filter((f) => f.severity === 'error')).toEqual([]);
+  });
+
+  it('rejects an unknown note id with 404', () => {
+    try {
+      discardNote(SPAN, 'nope');
+      throw new Error('should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(NoteMutationError);
+      expect((e as NoteMutationError).status).toBe(404);
+    }
   });
 });

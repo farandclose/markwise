@@ -115,6 +115,43 @@ export function resolveNote(source: string, id: string, at: string): string {
   return out.join('\n');
 }
 
+/**
+ * Discard note `id`: strip its inline marker(s) from the prose (restoring any wrapped text to plain
+ * prose) and remove its record from `mw:log`, dropping the whole log block if it was the only record.
+ * Unlike resolveNote, it writes NO archive record - the note is erased as if it never existed (the
+ * × "discard" / undo on a suggestion). Pure string transform.
+ */
+export function discardNote(source: string, id: string): string {
+  const doc = parse(source);
+  const log = doc.blocks.find((b) => b.name === 'log');
+  if (!log) throw new NoteMutationError('document has no mw:log block', 404);
+
+  const rec = log.records.find((r) => isObj(r.json) && r.json.id === id);
+  if (!rec || !isObj(rec.json)) throw new NoteMutationError(`note not found: ${id}`, 404);
+
+  // Phase 1: remove this note's inline markers from the prose, right-to-left so offsets stay valid.
+  const mine = doc.markers.filter((m) => m.id === id).sort((a, b) => b.offset - a.offset);
+  let stripped = source;
+  for (const m of mine) stripped = stripped.slice(0, m.offset) + stripped.slice(m.end);
+
+  // Phase 2: drop the record from mw:log. Re-parse the marker-stripped text so line numbers are
+  // accurate. If it was the only record, drop the entire (now empty) log block.
+  const doc2 = parse(stripped);
+  const log2 = doc2.blocks.find((b) => b.name === 'log')!;
+  const rec2 = log2.records.find((r) => isObj(r.json) && r.json.id === id)!;
+  const lines = stripped.split('\n');
+  const logEmpties = log2.records.length === 1;
+  const dropFrom = logEmpties ? log2.openerLine : rec2.line;
+  const dropTo = logEmpties ? log2.closeLine ?? log2.lastLine : rec2.line;
+
+  const out: string[] = [];
+  for (let n = 1; n <= lines.length; n++) {
+    if (n >= dropFrom && n <= dropTo) continue;
+    out.push(lines[n - 1]!);
+  }
+  return out.join('\n');
+}
+
 const MARKER_RE = /<!--\s*\/?mw:[A-Za-z0-9][A-Za-z0-9_-]*\s*-->/g;
 const stripMarkers = (s: string): string => s.replace(MARKER_RE, '');
 const CONTEXT_WINDOW = 16; // chars of before/after context stored on a new anchor
