@@ -5,10 +5,15 @@ import { status } from '../status.js';
 import { buildHandoffText } from './handoff.js';
 import type { DocPayload } from './types.js';
 
+// Same inline-marker shape stripped in fix.ts / lint.ts. A comment can anchor a word inside the
+// H1 (e.g. `# Product <!-- mw:n8 -->Brief<!-- /mw:n8 -->`); without this the raw markers leak into
+// the page/tab title.
+const MARKER_STRIP_RE = /<!--\s*\/?mw:[A-Za-z0-9][A-Za-z0-9_-]*\s*-->/g;
+
 function firstH1(source: string): string | undefined {
   for (const line of source.split('\n')) {
     const m = /^#\s+(.+?)\s*$/.exec(line);
-    if (m) return m[1];
+    if (m) return m[1]!.replace(MARKER_STRIP_RE, '').trim() || undefined;
   }
   return undefined;
 }

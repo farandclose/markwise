@@ -22,6 +22,12 @@ describe('buildDocPayload', () => {
     expect(p.title).toBe('notes.md');
   });
 
+  it('strips mw markers from an H1 that anchors a comment (no raw markers in the title)', () => {
+    const doc = '# Product <!-- mw:n8 -->Brief<!-- /mw:n8 -->\n\nBody.\n';
+    const p = buildDocPayload(doc, '/tmp/d.md');
+    expect(p.title).toBe('Product Brief');
+  });
+
   it('includes only OPEN notes and counts them', () => {
     const p = buildDocPayload(DOC, '/tmp/plan.md');
     expect(p.notes.map((n) => n.id)).toEqual(['s1']);
