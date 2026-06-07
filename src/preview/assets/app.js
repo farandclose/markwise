@@ -18,6 +18,7 @@
   let pendingTarget = null; // { kind:'span'|'point', start, end? } awaiting a draft
   let pillEl = null;
   let handoff = null; // latest /api/doc handoff bundle { path, waitingCount, text }
+  let anchorEls = []; // highlight rectangles over the text a draft is anchored to
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
@@ -158,6 +159,12 @@
       });
       railEl.appendChild(card);
     });
+    if (!notes.length) {
+      const empty = document.createElement('p');
+      empty.className = 'mw-rail-empty';
+      empty.textContent = 'Select text to comment.';
+      railEl.appendChild(empty);
+    }
   }
 
   function activate(id) {
@@ -178,11 +185,41 @@
     body.classList.toggle('mw-clean', !on);
     body.classList.toggle('mw-revealed', on);
     counterBtn.setAttribute('aria-pressed', String(on));
-    if (!on) activate(null);
+    if (!on) { activate(null); clearAnchor(); }
   }
 
   function clearPill() {
     if (pillEl) { pillEl.remove(); pillEl = null; }
+  }
+
+  // Remove the highlight rectangles drawn over the text a draft is anchored to.
+  function clearAnchor() {
+    anchorEls.forEach(function (el) { el.remove(); });
+    anchorEls = [];
+  }
+
+  // Light the text a draft is anchored to, so the composer is visibly tied to its source. Uses the
+  // selection's per-line client rects (falling back to the captured bounding rect), positioned in
+  // page coordinates so the highlight scrolls with the document while the reviewer types.
+  function drawAnchor(range, fallbackRect) {
+    clearAnchor();
+    var rects = [];
+    if (range) {
+      var list = range.getClientRects();
+      for (var i = 0; i < list.length; i++) rects.push(list[i]);
+    }
+    if (!rects.length && fallbackRect && fallbackRect.width > 0) rects.push(fallbackRect);
+    rects.forEach(function (r) {
+      if (r.width < 1 || r.height < 1) return;
+      var hl = document.createElement('div');
+      hl.className = 'mw-anchor';
+      hl.style.left = r.left + window.scrollX + 'px';
+      hl.style.top = r.top + window.scrollY + 'px';
+      hl.style.width = r.width + 'px';
+      hl.style.height = r.height + 'px';
+      body.appendChild(hl);
+      anchorEls.push(hl);
+    });
   }
 
   // Map a DOM (textNode, offset) to an absolute source offset via the enclosing breadcrumb run.
@@ -302,14 +339,29 @@
   }
 
   function openDraft(target) {
+    // Capture the live selection range before clearing the pill or focusing the textarea, so the
+    // anchor highlight can use precise per-line rects.
+    var sel = window.getSelection();
+    var liveRange = sel && sel.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0).cloneRange() : null;
     clearPill();
     if (body.classList.contains('mw-clean')) reveal(true);
-    // Remove any existing draft first (one draft at a time).
+    // Remove any existing draft first (one draft at a time), and the quiet empty-rail hint.
     var existing = railEl.querySelector('.mw-draft');
     if (existing) existing.remove();
+    var emptyHint = railEl.querySelector('.mw-rail-empty');
+    if (emptyHint) emptyHint.remove();
+
+    // Light the source text (spans only; a point has no extent to highlight).
+    if (target.kind === 'span') drawAnchor(liveRange, target.rect);
 
     var card = document.createElement('section');
     card.className = 'mw-draft';
+    // Align the draft to the selection's vertical position (Google-Docs-style) when the rail is
+    // otherwise empty; with existing notes present, keep it at the top to avoid overlap.
+    if (target.rect && !railEl.querySelector('.mw-card')) {
+      var offset = Math.max(0, Math.round(target.rect.top - railEl.getBoundingClientRect().top));
+      card.style.marginTop = offset + 'px';
+    }
     var ta = document.createElement('textarea');
     ta.placeholder = 'Write a comment…';
     var actions = document.createElement('div');
@@ -325,6 +377,7 @@
 
     cancel.addEventListener('click', function () {
       card.remove();
+      clearAnchor();
       var s = window.getSelection();
       if (s) s.removeAllRanges();
     });
@@ -345,6 +398,7 @@
         })
         .then(function (data) {
           if (data && data.createdId) activeId = data.createdId; // activate the new note after repaint
+          clearAnchor();
           return load();
         })
         .catch(function (err) { showToast(err.message || 'Create failed'); add.disabled = false; });
@@ -411,12 +465,21 @@
     }
   });
 
-  // Esc dismisses a pending pill and clears the selection.
+  // Esc dismisses a pending pill, or an open draft (with its anchor), and clears the selection.
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && pillEl) {
+    if (e.key !== 'Escape') return;
+    if (pillEl) {
       clearPill();
       var sel = window.getSelection();
       if (sel) sel.removeAllRanges();
+      return;
+    }
+    var draft = railEl.querySelector('.mw-draft');
+    if (draft) {
+      draft.remove();
+      clearAnchor();
+      var s = window.getSelection();
+      if (s) s.removeAllRanges();
     }
   });
 
