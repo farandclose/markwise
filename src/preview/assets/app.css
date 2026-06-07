@@ -43,6 +43,12 @@
   /* Layout (theme-agnostic) */
   --mw-col: 680px;
   --mw-rail-w: 320px;
+
+  /* Type (P1): chrome stays sans; the document column reads in a serif. System stacks,
+     no web-font dependency. */
+  --mw-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mw-font-serif: "Iowan Old Style", "Charter", "Palatino", Georgia, Cambria, "Times New Roman", serif;
+  --mw-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* Dark: committed deep neutral with a faint cool tint. Not slate-blue dusk,
@@ -84,7 +90,7 @@ html, body {
   margin: 0;
   background: var(--mw-bg);
   color: var(--mw-ink);
-  font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font: 16px/1.7 var(--mw-font-sans);
 }
 
 /* Toolbar (spec section 2) */
@@ -155,12 +161,15 @@ html, body {
   gap: 32px;
   padding: 48px 24px 120px;
 }
-.mw-doc { grid-column: 2; width: 100%; max-width: var(--mw-col); }
-.mw-doc h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 0.6em; }
-.mw-doc h2 { font-size: 1.5rem; margin: 1.6em 0 0.5em; }
+/* Reading column: serif body for an editorial, document-first read (P1). */
+.mw-doc { grid-column: 2; width: 100%; max-width: var(--mw-col); font-family: var(--mw-font-serif); font-size: 17.5px; line-height: 1.72; }
+/* Headings stay sans - serif lives only in the prose, never the chrome or the heads. */
+.mw-doc h1, .mw-doc h2, .mw-doc h3, .mw-doc h4, .mw-doc h5, .mw-doc h6 { font-family: var(--mw-font-sans); }
+.mw-doc h1 { font-size: 2.15rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; margin: 0 0 0.55em; }
+.mw-doc h2 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.015em; margin: 1.9em 0 0.5em; }
 .mw-doc p { margin: 0 0 1.1em; }
-.mw-doc pre { background: var(--mw-code-bg); padding: 14px 16px; border-radius: 8px; overflow: auto; }
-.mw-doc code { background: var(--mw-code-inline-bg); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+.mw-doc pre { background: var(--mw-code-bg); padding: 14px 16px; border-radius: 8px; overflow: auto; font-family: var(--mw-font-mono); }
+.mw-doc code { background: var(--mw-code-inline-bg); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; font-family: var(--mw-font-mono); }
 .mw-doc pre code { background: none; padding: 0; }
 
 /* Rail: the grid reserves its track even while the rail is empty/hidden, so the document never
