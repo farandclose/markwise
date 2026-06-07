@@ -71,6 +71,31 @@ function convertMarker(raw: string, env: RenderEnv): string | null {
 
 const md = new MarkdownIt({ html: true, linkify: true, typographer: false });
 
+// CommonMark begins an HTML comment block at any line starting with `<!--`. A note anchored to a
+// whole paragraph puts its opening marker at the line start, which would otherwise swallow the
+// prose as a raw block - losing the highlight span and the breadcrumb runs the comment pill needs.
+// Decline html_block for a "marker + prose" line so the paragraph rule parses it instead; the
+// markers then surface as html_inline tokens (converted below) and the text keeps its breadcrumbs.
+// A bare marker line, mw:log / mw:archive blocks, and real HTML fall through to the original rule.
+const MW_OPENS_LINE = /^<!--\s*\/?mw:[A-Za-z0-9][A-Za-z0-9_-]*\s*-->(.*)$/;
+// markdown-it exposes block rules only via the internal __rules__ array; cast to reach it.
+const blockRuler = md.block.ruler as unknown as {
+  __rules__: Array<{ name: string; fn: (...a: unknown[]) => boolean }>;
+  at: (name: string, fn: (...a: unknown[]) => boolean) => void;
+};
+const defaultHtmlBlock = blockRuler.__rules__.find((r) => r.name === 'html_block')!.fn;
+blockRuler.at('html_block', (...args) => {
+  const [state, startLine] = args as [
+    { src: string; bMarks: number[]; eMarks: number[]; tShift: number[] },
+    number,
+  ];
+  const start = state.bMarks[startLine]! + state.tShift[startLine]!;
+  const lineText = state.src.slice(start, state.eMarks[startLine]!);
+  const m = MW_OPENS_LINE.exec(lineText);
+  if (m && m[1]!.trim() !== '') return false; // fused marker + prose: let the paragraph rule run
+  return defaultHtmlBlock(...args);
+});
+
 // Wrap every text run in an offset breadcrumb (escaped exactly like the default text rule).
 md.renderer.rules.text = (tokens, idx) => {
   const t = tokens[idx]!;

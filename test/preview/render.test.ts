@@ -108,3 +108,42 @@ describe('renderDocumentHtml: marker highlights', () => {
     expect(html).not.toContain('data-mw-id="zz"');
   });
 });
+
+// Regression: a note that anchors a whole paragraph puts its opening marker at the
+// start of the line. CommonMark then parses the line as an HTML comment block, so the
+// marker never became a span and the prose lost its breadcrumbs (no highlight, no pill).
+describe('renderDocumentHtml: a marker that opens a paragraph', () => {
+  const SRC = [
+    '# T',
+    '',
+    '## Design Partnerships',
+    '',
+    '<!-- mw:p1 -->We are running design partnerships to prove value.<!-- /mw:p1 -->',
+    '',
+    '## Pricing',
+    '',
+    'Flat fee.',
+    '',
+    '<!-- mw:log v=1',
+    '{"id":"p1","type":"comment","state":"open","disp":"none","anchor":{"kind":"span","hash":"0","before":"s\\n\\n","after":"\\n\\n##"},"thread":[]}',
+    '-->',
+    '',
+  ].join('\n');
+
+  it('opens a highlight span for a note whose marker starts the paragraph', () => {
+    expect(renderDocumentHtml(SRC)).toContain('<span class="mw-span mw-type-comment" data-mw-id="p1">');
+  });
+
+  it('does not leak the literal markers into the output', () => {
+    const html = renderDocumentHtml(SRC);
+    expect(html).not.toContain('<!-- mw:p1 -->');
+    expect(html).not.toContain('<!-- /mw:p1 -->');
+  });
+
+  it('still emits breadcrumb runs for the paragraph prose (so the pill can attach)', () => {
+    const html = renderDocumentHtml(SRC);
+    const m = /<span class="mw-run" data-s="(\d+)" data-e="(\d+)">([^<]*partnerships[^<]*)<\/span>/.exec(html);
+    expect(m).not.toBeNull();
+    expect(SRC.slice(Number(m![1]), Number(m![2]))).toBe(unescape(m![3]!));
+  });
+});
