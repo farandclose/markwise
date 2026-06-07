@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Markwise — Surface Explorer</title>
+    <style>
+      /* ===================================================================
+         SURFACE EXPLORER — decision aid for P0 #1 (dark vs light).
+         Mirrors the real Markwise preview markup + class names so whatever
+         we pick ports straight into src/preview/assets/app.css.
+         Only the SURFACE + annotation tints change between themes; type and
+         chrome are held constant so we judge one variable.
+         =================================================================== */
+
+      /* ---- DARK (hero candidate): calm deep neutral, faint cool tint.
+              Deliberately NOT the slate-blue "dusk" cliché, NOT pure black. ---- */
+      html[data-theme="dark"] {
+        --mw-bg: #16171a;
+        --mw-surface: #1e1f23;     /* panels, cards, code */
+        --mw-surface-2: #26272c;   /* inputs, hover */
+        --mw-ink: #e8e8eb;
+        --mw-muted: #9a9ba2;
+        --mw-line: #2a2b30;
+        --mw-line-strong: #3c3d44;
+        --mw-primary-bg: #e8e8eb;  /* near-white primary button */
+        --mw-primary-ink: #16171a;
+        --mw-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        --mw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+        --mw-comment: rgba(240, 198, 92, 0.18);
+        --mw-comment-deep: rgba(240, 198, 92, 0.32);
+        --mw-replace: rgba(96, 165, 250, 0.16);
+        --mw-replace-deep: rgba(96, 165, 250, 0.30);
+        --mw-replace-line: #74a9f0;
+        --mw-delete: rgba(244, 113, 113, 0.15);
+        --mw-delete-deep: rgba(244, 113, 113, 0.28);
+        --mw-insert: #35d6a0;
+        --mw-anchor: rgba(255, 213, 92, 0.32);
+      }
+
+      /* ---- LIGHT (test candidate): committed neutral off-white.
+              Deliberately NOT warm cream/paper — chroma near zero. ---- */
+      html[data-theme="light"] {
+        --mw-bg: #fafafa;
+        --mw-surface: #ffffff;
+        --mw-surface-2: #f4f4f5;
+        --mw-ink: #1c1c1f;
+        --mw-muted: #6a6a70;
+        --mw-line: #e7e7ea;
+        --mw-line-strong: #d4d4d8;
+        --mw-primary-bg: #1c1c1f;
+        --mw-primary-ink: #ffffff;
+        --mw-shadow: 0 10px 30px rgba(0, 0, 0, 0.10);
+        --mw-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+        --mw-comment: #fdeeb0;
+        --mw-comment-deep: #f8df85;
+        --mw-replace: #d3e6ff;
+        --mw-replace-deep: #aed4ff;
+        --mw-replace-line: #5b9bf0;
+        --mw-delete: #ffdad9;
+        --mw-delete-deep: #ffc1c0;
+        --mw-insert: #16a34a;
+        --mw-anchor: rgba(255, 213, 92, 0.5);
+      }
+
+      :root { --mw-col: 680px; --mw-rail-w: 320px; }
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        background: var(--mw-bg);
+        color: var(--mw-ink);
+        font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Toolbar */
+      .mw-toolbar {
+        position: sticky; top: 0; z-index: 5;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 24px;
+        background: color-mix(in srgb, var(--mw-bg) 88%, transparent);
+        backdrop-filter: saturate(150%) blur(8px);
+        border-bottom: 1px solid var(--mw-line);
+      }
+      .mw-wordmark { font-weight: 700; letter-spacing: -0.01em; }
+      .mw-doctitle { margin-left: 12px; color: var(--mw-muted); }
+      .mw-tools { display: flex; align-items: center; gap: 12px; }
+      .mw-counter {
+        border: 1px solid var(--mw-line-strong); background: var(--mw-surface);
+        color: var(--mw-ink); border-radius: 999px; padding: 6px 14px;
+        font: inherit; font-size: 14px; cursor: pointer;
+      }
+      .mw-counter[aria-pressed="true"] { background: var(--mw-surface-2); }
+      .mw-handoff {
+        border: none; background: var(--mw-primary-bg); color: var(--mw-primary-ink);
+        border-radius: 8px; padding: 7px 14px; font: inherit; font-size: 14px;
+        font-weight: 600; cursor: pointer;
+      }
+
+      /* Stage: the real reserved-rail grid (document never moves). */
+      .mw-stage {
+        display: grid;
+        grid-template-columns: var(--mw-rail-w) minmax(0, var(--mw-col)) var(--mw-rail-w);
+        justify-content: center; gap: 32px; padding: 48px 24px 120px;
+      }
+      .mw-doc { grid-column: 2; width: 100%; max-width: var(--mw-col); }
+      .mw-doc h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 0.6em; letter-spacing: -0.02em; }
+      .mw-doc h2 { font-size: 1.4rem; margin: 1.8em 0 0.5em; letter-spacing: -0.01em; }
+      .mw-doc p { margin: 0 0 1.1em; }
+
+      /* Annotation highlights */
+      .mw-span { border-radius: 3px; padding: 0 1px; cursor: pointer; }
+      .mw-type-comment { background: var(--mw-comment); }
+      .mw-type-replace { background: var(--mw-replace); text-decoration: underline; text-decoration-color: var(--mw-replace-line); text-underline-offset: 2px; }
+      .mw-type-delete  { background: var(--mw-delete); text-decoration: line-through; }
+      .mw-type-comment.active { background: var(--mw-comment-deep); }
+      .mw-type-replace.active { background: var(--mw-replace-deep); }
+      .mw-type-delete.active  { background: var(--mw-delete-deep); }
+      .mw-point {
+        display: inline-block; width: 3px; height: 1.1em; vertical-align: text-bottom;
+        margin: 0 1px; border-radius: 2px; background: var(--mw-insert); cursor: pointer;
+      }
+
+      /* Rail + cards */
+      .mw-rail { grid-column: 3; width: var(--mw-rail-w); }
+      .mw-card {
+        border: 1px solid var(--mw-line); border-radius: 10px;
+        background: var(--mw-surface); padding: 12px 14px; margin-bottom: 12px; cursor: pointer;
+      }
+      .mw-card.active { border-color: var(--mw-line-strong); box-shadow: var(--mw-shadow); }
+      .mw-card-head { display: flex; gap: 8px; align-items: baseline; }
+      .mw-card-type {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mw-muted);
+        border: 1px solid var(--mw-line-strong); border-radius: 999px; padding: 1px 7px; flex: 0 0 auto;
+      }
+      .mw-card-snippet { color: var(--mw-ink); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .mw-thread { margin-top: 10px; }
+      .mw-msg { padding: 8px 0; border-top: 1px solid var(--mw-line); }
+      .mw-msg-meta { display: flex; gap: 8px; font-size: 12px; color: var(--mw-muted); margin-bottom: 2px; }
+      .mw-msg-by { font-weight: 600; text-transform: capitalize; }
+      .mw-msg-body { font-size: 14px; }
+      .mw-by-reviewer .mw-msg-by { color: var(--mw-ink); }
+      .mw-reply {
+        width: 100%; min-height: 52px; margin-top: 8px; border: 1px solid var(--mw-line-strong);
+        border-radius: 8px; padding: 8px; font: inherit; font-size: 14px; resize: vertical;
+        background: var(--mw-surface-2); color: var(--mw-ink);
+      }
+      .mw-reply::placeholder { color: var(--mw-muted); }
+      .mw-verbs { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+      .mw-verbs button {
+        border: 1px solid var(--mw-line-strong); background: var(--mw-surface); color: var(--mw-ink);
+        border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer;
+      }
+      .mw-resolve-btn { border-color: var(--mw-ink); }
+
+      /* Floating label (top-left) so the screenshot is self-identifying */
+      .mw-mode {
+        position: fixed; left: 16px; bottom: 16px; z-index: 30;
+        font-size: 12px; color: var(--mw-muted); letter-spacing: 0.02em;
+        background: var(--mw-surface); border: 1px solid var(--mw-line);
+        border-radius: 999px; padding: 5px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="mw-toolbar">
+      <div class="mw-brand">
+        <span class="mw-wordmark">Markwise</span>
+        <span class="mw-doctitle">sample.md</span>
+      </div>
+      <div class="mw-tools">
+        <button type="button" class="mw-counter" aria-pressed="true"><span class="mw-count">6</span> notes</button>
+        <button type="button" class="mw-handoff">Hand to agent</button>
+      </div>
+    </header>
+
+    <main class="mw-stage">
+      <article class="mw-doc" aria-label="document">
+        <h1>Nimbus — Product Brief</h1>
+
+        <h2>Overview</h2>
+        <p>Nimbus is a collaborative notebook for small product teams who live in markdown. It ships by <span class="mw-span mw-type-replace">Q3</span> of next year.<span class="mw-point" title="insertion"></span></p>
+        <p>The core promise is simple: <span class="mw-span mw-type-comment active">write once, review anywhere</span>. Reviewers comment inline, and an agent applies the edits.</p>
+
+        <h2>Market</h2>
+        <p>The market is <span class="mw-span mw-type-delete">large and growing</span>. Our wedge is teams already drafting specs in plain text.</p>
+
+        <h2>Pricing</h2>
+        <p>We will charge a flat <span class="mw-span mw-type-replace">$12 per seat</span> per month, billed annually.</p>
+
+        <h2>Timeline</h2>
+        <p>A private beta opens in spring, with general availability to follow.<span class="mw-point" title="comment"></span></p>
+
+        <h2>Open Risks</h2>
+        <p>Adoption hinges on the editor integrations landing on schedule.</p>
+      </article>
+
+      <aside class="mw-rail" aria-label="notes">
+        <div class="mw-card">
+          <div class="mw-card-head"><span class="mw-card-type">Replace</span><span class="mw-card-snippet">Q3 → Q4</span></div>
+        </div>
+        <div class="mw-card">
+          <div class="mw-card-head"><span class="mw-card-type">Insert</span><span class="mw-card-snippet">Early access starts even sooner.</span></div>
+        </div>
+        <div class="mw-card active">
+          <div class="mw-card-head"><span class="mw-card-type">Comment</span><span class="mw-card-snippet">write once, review anywhere</span></div>
+          <div class="mw-thread">
+            <div class="mw-msg mw-by-agent">
+              <div class="mw-msg-meta"><span class="mw-msg-by">agent</span><span>May 28</span></div>
+              <div class="mw-msg-body">Is this the final tagline?</div>
+            </div>
+            <div class="mw-msg mw-by-reviewer">
+              <div class="mw-msg-meta"><span class="mw-msg-by">reviewer</span><span>May 28</span></div>
+              <div class="mw-msg-body">Yes, keep it.</div>
+            </div>
+            <div class="mw-msg mw-by-agent">
+              <div class="mw-msg-meta"><span class="mw-msg-by">agent</span><span>May 28</span></div>
+              <div class="mw-msg-body">Great, leaving as-is.</div>
+            </div>
+          </div>
+          <textarea class="mw-reply" placeholder="Reply…"></textarea>
+          <div class="mw-verbs">
+            <button class="mw-resolve-btn">Resolve</button>
+          </div>
+        </div>
+        <div class="mw-card">
+          <div class="mw-card-head"><span class="mw-card-type">Delete</span><span class="mw-card-snippet">large and growing</span></div>
+        </div>
+        <div class="mw-card">
+          <div class="mw-card-head"><span class="mw-card-type">Replace</span><span class="mw-card-snippet">$12 → $15 per seat</span></div>
+        </div>
+        <div class="mw-card">
+          <div class="mw-card-head"><span class="mw-card-type">Comment</span><span class="mw-card-snippet">general availability to follow.</span></div>
+        </div>
+      </aside>
+    </main>
+
+    <div class="mw-mode" id="modeLabel"></div>
+    <script>
+      const theme = new URLSearchParams(location.search).get("theme") || "dark";
+      document.documentElement.dataset.theme = theme;
+      document.getElementById("modeLabel").textContent = theme.toUpperCase() + " surface";
+    </script>
+  </body>
+</html>
