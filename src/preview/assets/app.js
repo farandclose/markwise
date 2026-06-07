@@ -92,16 +92,20 @@
       .catch(function (err) { showToast(err.message || 'Action failed'); });
   }
 
-  // The x on a delete card: reveal an inline "Remove this suggestion?" confirm (never a browser
-  // confirm() dialog). Remove -> discard the note (restores the prose); Cancel/Esc -> back out.
-  function openDiscardConfirm(card, id, discardBtn) {
-    if (card.querySelector('.mw-discard-confirm')) return;
-    discardBtn.style.visibility = 'hidden';
-    var confirm = document.createElement('div');
-    confirm.className = 'mw-discard-confirm';
-    var q = document.createElement('span');
+  // The x on a delete card opens a card-scoped confirm: a slight scrim over the card's own content
+  // with the prompt centered on top (no reflow of the doc or other cards; never a browser confirm()
+  // dialog). Remove -> discard the note (restores the prose); Cancel/Esc -> back out.
+  function openDiscardConfirm(card, id) {
+    if (card.querySelector('.mw-discard-overlay')) return;
+    var overlay = document.createElement('div');
+    overlay.className = 'mw-discard-overlay';
+    overlay.setAttribute('role', 'alertdialog');
+    overlay.setAttribute('aria-label', 'Remove this suggestion?');
+    var q = document.createElement('p');
     q.className = 'mw-discard-q';
     q.textContent = 'Remove this suggestion?';
+    var actions = document.createElement('div');
+    actions.className = 'mw-discard-actions';
     var cancel = document.createElement('button');
     cancel.type = 'button';
     cancel.className = 'mw-discard-cancel';
@@ -112,26 +116,31 @@
     remove.textContent = 'Remove';
 
     function close() {
-      confirm.remove();
-      discardBtn.style.visibility = '';
+      overlay.remove();
+      card.classList.remove('mw-confirming');
       document.removeEventListener('keydown', onKey, true);
     }
     function onKey(e) {
       if (e.key === 'Escape') { e.stopPropagation(); close(); }
     }
+    // Clicks on the scrim stay contained (don't bubble to the card's activate handler).
+    overlay.addEventListener('click', function (e) { e.stopPropagation(); });
     cancel.addEventListener('click', function (e) { e.stopPropagation(); close(); });
     remove.addEventListener('click', function (e) {
       e.stopPropagation();
-      // Dismiss the confirm (and deregister the Escape listener) before send() -> load() repaints the
+      // Dismiss the overlay (and deregister the Escape listener) before send() -> load() repaints the
       // rail and discards this DOM, which would otherwise leak the capture-phase keydown listener.
       close();
       send('/api/note/' + encodeURIComponent(id) + '/discard', null);
     });
-    confirm.appendChild(q);
-    confirm.appendChild(cancel);
-    confirm.appendChild(remove);
-    card.insertBefore(confirm, card.querySelector('.mw-thread'));
+    actions.appendChild(cancel);
+    actions.appendChild(remove);
+    overlay.appendChild(q);
+    overlay.appendChild(actions);
+    card.classList.add('mw-confirming');
+    card.appendChild(overlay);
     document.addEventListener('keydown', onKey, true);
+    cancel.focus(); // focus the safe (non-destructive) action; Esc also cancels
   }
 
   function renderRail(notes) {
@@ -157,7 +166,7 @@
         discardBtn.textContent = '×';
         discardBtn.addEventListener('click', function (e) {
           e.stopPropagation();
-          openDiscardConfirm(card, note.id, discardBtn);
+          openDiscardConfirm(card, note.id);
         });
         head.appendChild(discardBtn);
       }

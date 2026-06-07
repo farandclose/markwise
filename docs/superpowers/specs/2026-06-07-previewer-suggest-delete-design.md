@@ -94,7 +94,7 @@ Discard ≠ resolve: resolve archives and keeps history (the agent may still see
 ## 6. The discard (×) control and undo
 The delete card carries a **×** in its header (delete cards only this slice). Interaction:
 
-- Click **×** -> the card reveals an inline confirm: `Remove this suggestion? [Cancel] [Remove]`. **Never a browser** `confirm()` **dialog** (heavy, and it would block the previewer's automation).
+- Click **×** -> a **card-scoped overlay confirm** appears: a slight scrim over the card's own content (the doc and other cards never reflow) with `Remove this suggestion?` and `[Cancel] [Remove]` centered on top. Modeled on Google Docs' "Delete this comment thread?" confirm. **Never a browser** `confirm()` **dialog** (heavy, and it would block the previewer's automation).
   
 - **Remove** -> `POST /api/note/:id/discard` -> `load()` repaints; the strikethrough is gone and the prose is restored.
   

@@ -358,7 +358,7 @@ html, body {
 @keyframes mw-resolve-out { to { opacity: 0; transform: translateX(10px); } }
 @media (prefers-reduced-motion: reduce) {
   .mw-span, .mw-card { transition: none; }
-  .mw-revealed .mw-rail, .mw-card.mw-resolving { animation: none; }
+  .mw-revealed .mw-rail, .mw-card.mw-resolving, .mw-discard-overlay { animation: none; }
 }
 
 /* Cards */
@@ -522,7 +522,7 @@ html, body {
 .mw-draft-actions button:hover { background: var(--mw-hover-tint); }
 .mw-draft-add { border-color: var(--mw-ink); }
 
-/* Discard (x) on a delete suggestion card, and its inline confirm. */
+/* Discard (x) on a delete suggestion card, plus the card-scoped confirm overlay. */
 .mw-card-discard {
   margin-left: auto;
   border: none;
@@ -537,25 +537,37 @@ html, body {
 .mw-card-discard:hover { color: var(--mw-ink); background: var(--mw-hover-tint); }
 .mw-card-discard:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
 
-.mw-discard-confirm {
+/* The confirm overlays the card in place: a slight scrim over the card's own content with the prompt
+   centered on top, so the doc and other cards never reflow. The card takes a min-height while
+   confirming (rail-internal, which Principle 1 permits) so a collapsed card still has room. */
+.mw-card.mw-confirming { position: relative; min-height: 96px; }
+.mw-discard-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--mw-muted);
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: inherit;
+  /* Opaque enough that the prompt clears AA; you sense the card faintly behind it, not read through it. */
+  background: color-mix(in srgb, var(--mw-surface) 90%, transparent);
+  animation: mw-fade-in 150ms ease-out;
 }
-.mw-discard-q { margin-right: auto; }
-.mw-discard-confirm button {
+.mw-discard-q { margin: 0; font-size: 14px; font-weight: 500; color: var(--mw-ink); text-align: center; }
+.mw-discard-actions { display: flex; gap: 8px; }
+.mw-discard-overlay button {
   border: 1px solid var(--mw-line);
   background: var(--mw-surface);
   color: var(--mw-ink);
   border-radius: 8px;
-  padding: 4px 10px;
+  padding: 5px 14px;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
 }
-.mw-discard-confirm button:hover { background: var(--mw-hover-tint); }
-.mw-discard-confirm button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
+.mw-discard-overlay button:hover { background: var(--mw-hover-tint); }
+.mw-discard-overlay button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
 .mw-discard-remove { border-color: var(--mw-error); color: var(--mw-error); }
