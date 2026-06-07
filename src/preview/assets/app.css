@@ -343,6 +343,24 @@ html, body {
 .mw-revealed .mw-span.mw-type-delete.active  { background: var(--mw-delete-deep); }
 .mw-revealed .mw-point.active { outline: 2px solid var(--mw-insert); outline-offset: 1px; }
 
+/* --- P3 motion: quiet, state-conveying only, 150-200ms ease-out, reduced-motion-safe (PRODUCT.md
+   restraint - no choreography, no bounce, no per-card stagger). --- */
+/* 1. Reveal crossfade: highlights settle in (transparent -> tint) rather than snapping on; the rail
+   fades in as one block (not staggered cards). Both fire once, on the clean->revealed toggle. */
+.mw-span { transition: background-color 180ms ease; }
+.mw-revealed .mw-rail { animation: mw-fade-in 180ms ease-out; }
+@keyframes mw-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* 2. Card <-> highlight bond: activating either end eases both ends together (the highlight to its
+   deep tint via the .mw-span transition above, the card's border + shadow here). */
+.mw-card { transition: border-color 150ms ease, box-shadow 150ms ease; }
+/* 3. Resolve reward: the card slides out before the repaint removes it (JS adds .mw-resolving). */
+.mw-card.mw-resolving { animation: mw-resolve-out 220ms ease-out forwards; overflow: hidden; pointer-events: none; }
+@keyframes mw-resolve-out { to { opacity: 0; transform: translateX(10px); } }
+@media (prefers-reduced-motion: reduce) {
+  .mw-span, .mw-card { transition: none; }
+  .mw-revealed .mw-rail, .mw-card.mw-resolving { animation: none; }
+}
+
 /* Cards */
 .mw-card {
   border: 1px solid var(--mw-line);

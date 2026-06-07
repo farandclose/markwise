@@ -145,8 +145,14 @@
       resolveBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         resolveBtn.disabled = true;
-        send('/api/note/' + encodeURIComponent(note.id) + '/resolve', null)
-          .finally(function () { resolveBtn.disabled = false; });
+        // Resolve reward: let the card play a quiet slide-out before the repaint removes it. On a
+        // failed resolve, load() rebuilds the rail so the (now classless) card simply returns.
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        card.classList.add('mw-resolving');
+        window.setTimeout(function () {
+          send('/api/note/' + encodeURIComponent(note.id) + '/resolve', null)
+            .finally(function () { resolveBtn.disabled = false; });
+        }, reduce ? 0 : 200);
       });
 
       verbs.appendChild(replyBtn);
