@@ -13,6 +13,7 @@
   const counterBtn = document.querySelector('.mw-counter');
   const countEl = document.querySelector('.mw-count');
   const handoffBtn = document.querySelector('.mw-handoff');
+  const themeBtn = document.querySelector('.mw-theme');
 
   let activeId = null;
   let pendingTarget = null; // { kind:'span'|'point', start, end? } awaiting a draft
@@ -336,6 +337,31 @@
         );
       });
     });
+  }
+
+  // Appearance: the control cycles a list of themes. Adding a theme later (e.g.
+  // 'sepia') turns this toggle into a picker with no other change. The OS-preference
+  // fallback applies only while the user has made no explicit choice.
+  const THEMES = ['dark', 'light'];
+  function setTheme(name, persist) {
+    document.documentElement.setAttribute('data-theme', name);
+    if (persist) { try { localStorage.setItem('mw-theme', name); } catch (e) {} }
+    if (themeBtn) themeBtn.title = 'Theme: ' + name + ' - click to switch';
+  }
+  if (themeBtn) {
+    setTheme(document.documentElement.getAttribute('data-theme') || 'dark', false);
+    themeBtn.addEventListener('click', function () {
+      var cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length], true);
+    });
+  }
+  if (window.matchMedia) {
+    try {
+      window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
+        try { if (localStorage.getItem('mw-theme')) return; } catch (_) {}
+        setTheme(e.matches ? 'light' : 'dark', false);
+      });
+    } catch (_) {}
   }
 
   function openDraft(target) {

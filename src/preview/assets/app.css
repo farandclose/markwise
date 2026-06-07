@@ -1,18 +1,81 @@
+/* ===================================================================
+   THEME TOKENS
+   :root holds the LIGHT palette (today's look, unchanged) so a no-JS
+   render is identical to before. :root[data-theme="dark"] overrides only
+   the colors. New themes (e.g. sepia) are added the same way: one block of
+   token overrides, then a string in the THEMES cycler in app.js.
+   Layout tokens (col, rail width) are theme-agnostic and live in :root.
+   =================================================================== */
 :root {
+  color-scheme: light;
+
+  /* Surfaces & text */
+  --mw-bg: #ffffff;
+  --mw-surface: #ffffff;                  /* cards, inputs, counter, draft */
+  --mw-toolbar-bg: rgba(255, 255, 255, 0.9);
   --mw-ink: #1d1d1f;
   --mw-muted: #6b6b70;
   --mw-line: #e6e6e8;
-  --mw-bg: #ffffff;
-  --mw-comment: #fff3c4;     /* comment tint */
+
+  /* Strong/inverted action pair (handoff, pressed counter, toast, pill) */
+  --mw-primary-bg: #111111;
+  --mw-primary-ink: #ffffff;
+  --mw-card-active-border: #111111;
+  --mw-shadow-card: 0 2px 10px rgba(0, 0, 0, 0.06);
+
+  /* Code */
+  --mw-code-bg: #f5f5f7;
+  --mw-code-inline-bg: #f0f0f2;
+
+  --mw-error: #b00020;
+
+  /* Annotation system */
+  --mw-comment: #fff3c4;                  /* comment tint */
   --mw-comment-deep: #ffe27a;
-  --mw-replace: #cfe8ff;     /* suggested replace */
+  --mw-replace: #cfe8ff;                  /* suggested replace */
   --mw-replace-deep: #9fd0ff;
-  --mw-delete: #ffd6d6;      /* delete */
+  --mw-replace-line: #9fd0ff;             /* replace underline */
+  --mw-delete: #ffd6d6;                   /* delete */
   --mw-delete-deep: #ffadad;
-  --mw-insert: #1f8f4e;      /* insert pillar */
+  --mw-insert: #1f8f4e;                   /* insert pillar */
+  --mw-anchor: rgba(255, 213, 92, 0.5);   /* highlighter over the text being commented on */
+
+  /* Layout (theme-agnostic) */
   --mw-col: 680px;
   --mw-rail-w: 320px;
-  --mw-anchor: rgba(255, 213, 92, 0.5); /* highlighter over the text being commented on */
+}
+
+/* Dark: committed deep neutral with a faint cool tint. Not slate-blue dusk,
+   not pure black. Annotations become translucent washes so prose stays calm. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --mw-bg: #16171a;
+  --mw-surface: #1e1f23;
+  --mw-toolbar-bg: rgba(22, 23, 26, 0.88);
+  --mw-ink: #e8e8eb;
+  --mw-muted: #9a9ba2;
+  --mw-line: #2a2b30;
+
+  --mw-primary-bg: #e8e8eb;
+  --mw-primary-ink: #16171a;
+  --mw-card-active-border: #50515a;
+  --mw-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  --mw-code-bg: #1e1f23;
+  --mw-code-inline-bg: #24252b;
+
+  --mw-error: #ff6b6b;
+
+  --mw-comment: rgba(245, 205, 90, 0.22);
+  --mw-comment-deep: rgba(245, 205, 90, 0.38);
+  --mw-replace: rgba(96, 165, 250, 0.16);
+  --mw-replace-deep: rgba(96, 165, 250, 0.30);
+  --mw-replace-line: #74a9f0;
+  --mw-delete: rgba(255, 107, 107, 0.15);
+  --mw-delete-deep: rgba(255, 107, 107, 0.28);
+  --mw-insert: #35d6a0;
+  --mw-anchor: rgba(255, 213, 92, 0.32);
 }
 
 * { box-sizing: border-box; }
@@ -33,7 +96,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--mw-toolbar-bg);
   backdrop-filter: saturate(180%) blur(8px);
   border-bottom: 1px solid var(--mw-line);
 }
@@ -43,18 +106,18 @@ html, body {
 
 .mw-counter {
   border: 1px solid var(--mw-line);
-  background: #fff;
+  background: var(--mw-surface);
   border-radius: 999px;
   padding: 6px 14px;
   font: inherit;
   font-size: 14px;
   cursor: pointer;
 }
-.mw-counter[aria-pressed="true"] { background: #111; color: #fff; border-color: #111; }
+.mw-counter[aria-pressed="true"] { background: var(--mw-primary-bg); color: var(--mw-primary-ink); border-color: var(--mw-primary-bg); }
 .mw-handoff {
-  border: 1px solid #111;
-  background: #111;
-  color: #fff;
+  border: 1px solid var(--mw-primary-bg);
+  background: var(--mw-primary-bg);
+  color: var(--mw-primary-ink);
   border-radius: 8px;
   padding: 6px 14px;
   font: inherit;
@@ -62,6 +125,25 @@ html, body {
   cursor: pointer;
 }
 .mw-handoff:disabled { opacity: 0.4; cursor: default; }
+
+/* Quiet appearance toggle: one small control that cycles the theme list
+   (dark -> light, extensible to more). Restrained per "the tool disappears". */
+.mw-theme {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--mw-line);
+  background: var(--mw-surface);
+  color: var(--mw-muted);
+  border-radius: 999px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.mw-theme:hover { color: var(--mw-ink); }
 
 /* Stage: reading column + permanently reserved rail (spec section 1, section 5).
    A 3-track grid keeps the document viewport-centered AND reserves the rail track, so opening a
@@ -77,8 +159,8 @@ html, body {
 .mw-doc h1 { font-size: 2rem; line-height: 1.25; margin: 0 0 0.6em; }
 .mw-doc h2 { font-size: 1.5rem; margin: 1.6em 0 0.5em; }
 .mw-doc p { margin: 0 0 1.1em; }
-.mw-doc pre { background: #f5f5f7; padding: 14px 16px; border-radius: 8px; overflow: auto; }
-.mw-doc code { background: #f0f0f2; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+.mw-doc pre { background: var(--mw-code-bg); padding: 14px 16px; border-radius: 8px; overflow: auto; }
+.mw-doc code { background: var(--mw-code-inline-bg); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
 .mw-doc pre code { background: none; padding: 0; }
 
 /* Rail: the grid reserves its track even while the rail is empty/hidden, so the document never
@@ -108,7 +190,7 @@ html, body {
     bottom: 0;
     width: min(360px, 92vw);
     overflow-y: auto;
-    background: #fff;
+    background: var(--mw-surface);
     border-left: 1px solid var(--mw-line);
     box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
     padding: 16px;
@@ -123,7 +205,7 @@ html, body {
 /* --- Notes revealed: in-prose treatments (spec section 4) --- */
 .mw-revealed .mw-span { border-radius: 3px; padding: 0 1px; cursor: pointer; }
 .mw-revealed .mw-span.mw-type-comment { background: var(--mw-comment); }
-.mw-revealed .mw-span.mw-type-replace { background: var(--mw-replace); text-decoration: underline; text-decoration-color: var(--mw-replace-deep); }
+.mw-revealed .mw-span.mw-type-replace { background: var(--mw-replace); text-decoration: underline; text-decoration-color: var(--mw-replace-line); }
 .mw-revealed .mw-span.mw-type-delete  { background: var(--mw-delete); text-decoration: line-through; }
 
 .mw-revealed .mw-point {
@@ -147,12 +229,12 @@ html, body {
 .mw-card {
   border: 1px solid var(--mw-line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--mw-surface);
   padding: 12px 14px;
   margin-bottom: 12px;
   cursor: pointer;
 }
-.mw-card.active { border-color: #111; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06); }
+.mw-card.active { border-color: var(--mw-card-active-border); box-shadow: var(--mw-shadow-card); }
 .mw-card-head { display: flex; gap: 8px; align-items: baseline; }
 .mw-card-type {
   font-size: 11px;
@@ -176,11 +258,12 @@ html, body {
 .mw-msg-by { font-weight: 600; text-transform: capitalize; }
 .mw-msg-body { font-size: 14px; }
 
-.mw-reply { width: 100%; min-height: 56px; border: 1px solid var(--mw-line); border-radius: 8px; padding: 8px; font: inherit; font-size: 14px; resize: vertical; }
+.mw-reply { width: 100%; min-height: 56px; border: 1px solid var(--mw-line); border-radius: 8px; padding: 8px; font: inherit; font-size: 14px; resize: vertical; background: var(--mw-surface); color: var(--mw-ink); }
+.mw-reply::placeholder, .mw-draft textarea::placeholder { color: var(--mw-muted); }
 .mw-verbs { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
-.mw-verbs button { border: 1px solid var(--mw-line); background: #fff; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; }
+.mw-verbs button { border: 1px solid var(--mw-line); background: var(--mw-surface); color: var(--mw-ink); border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; }
 
-.mw-error { color: #b00020; }
+.mw-error { color: var(--mw-error); }
 
 /* Per-speaker thread distinction (M2): the reviewer's own messages read stronger than the agent's */
 .mw-msg.mw-by-reviewer { border-left: 2px solid var(--mw-ink); padding-left: 8px; }
@@ -199,8 +282,8 @@ html, body {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: #111;
-  color: #fff;
+  background: var(--mw-primary-bg);
+  color: var(--mw-primary-ink);
   padding: 10px 16px;
   border-radius: 8px;
   font-size: 14px;
@@ -219,8 +302,8 @@ html, body {
   position: fixed;
   z-index: 20;
   transform: translate(-50%, -100%);
-  background: #111;
-  color: #fff;
+  background: var(--mw-primary-bg);
+  color: var(--mw-primary-ink);
   border: none;
   border-radius: 999px;
   padding: 6px 12px;
@@ -236,7 +319,7 @@ html, body {
   top: 100%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #111;
+  border-top-color: var(--mw-primary-bg);
 }
 
 /* Persistent highlight over the text a draft is anchored to (the comment's source). */
@@ -259,10 +342,10 @@ html, body {
 .mw-draft {
   border: 1px solid var(--mw-line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--mw-surface);
   padding: 12px 14px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--mw-shadow-card);
   animation: mw-draft-in 160ms ease-out;
 }
 @keyframes mw-draft-in {
@@ -281,7 +364,9 @@ html, body {
   font: inherit;
   font-size: 14px;
   resize: vertical;
+  background: var(--mw-surface);
+  color: var(--mw-ink);
 }
 .mw-draft-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
-.mw-draft-actions button { border: 1px solid var(--mw-line); background: #fff; border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.mw-draft-actions button { border: 1px solid var(--mw-line); background: var(--mw-surface); color: var(--mw-ink); border-radius: 8px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
 .mw-draft-add { border-color: var(--mw-ink); }
