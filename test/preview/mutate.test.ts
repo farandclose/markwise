@@ -399,6 +399,13 @@ describe('discardNote', () => {
     expect(out).toContain('mw:p2');
   });
 
+  it('discards a point note, leaving siblings intact', () => {
+    const out = discardNote(SPAN, 'p2');
+    expect(out).not.toContain('mw:p2');
+    expect(out).not.toContain('"id":"p2"');
+    expect(out).toContain('"id":"s1"'); // s1 survives
+  });
+
   it('drops the whole log block when discarding the only note', () => {
     const ONLY = [
       'A <!-- mw:n1 -->word<!-- /mw:n1 --> here.',
