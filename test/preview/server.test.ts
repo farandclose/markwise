@@ -192,3 +192,54 @@ describe('mutation endpoints', () => {
     expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
   });
 });
+
+describe('suggest-delete endpoints', () => {
+  it('creates a delete suggestion over a span and keeps the text in the file', async () => {
+    const base = await start(DOC);
+    const wStart = DOC.indexOf('Ships');
+    const res = await post(base, '/api/note', { type: 'delete', kind: 'span', start: wStart, end: wStart + 5 });
+    expect(res.status).toBe(200);
+    const payload = await res.json();
+    expect(payload.createdId).toBe('n1');
+    const note = payload.notes.find((n: { id: string }) => n.id === 'n1');
+    expect(note.type).toBe('delete');
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).toContain('<!-- mw:n1 -->Ships<!-- /mw:n1 -->'); // text stays; it is a suggestion
+    expect(onDisk).toContain('"type":"delete"');
+  });
+
+  it('rejects a point delete (400) and leaves the file byte-identical', async () => {
+    const base = await start(DOC);
+    const before = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    const res = await post(base, '/api/note', { type: 'delete', kind: 'point', start: 3 });
+    expect(res.status).toBe(400);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
+  });
+
+  it('rejects an unsupported type (400)', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note', { type: 'replace', kind: 'span', start: 3, end: 8, body: 'x' });
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /api/note/:id/discard removes the note and restores the prose', async () => {
+    const base = await start(DOC);
+    const wStart = DOC.indexOf('Ships');
+    await post(base, '/api/note', { type: 'delete', kind: 'span', start: wStart, end: wStart + 5 });
+    const res = await post(base, '/api/note/n1/discard');
+    expect(res.status).toBe(200);
+    const payload = await res.json();
+    expect(payload.openCount).toBe(1); // back to just s1
+    expect(payload.html).not.toContain('data-mw-id="n1"');
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).not.toContain('mw:n1');
+    expect(onDisk).not.toContain('mw:archive'); // discarded, not archived
+    expect(onDisk).toContain('Ships'); // prose restored
+  });
+
+  it('404s a discard of an unknown note id', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note/nope/discard');
+    expect(res.status).toBe(404);
+  });
+});

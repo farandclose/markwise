@@ -6,7 +6,7 @@ import { buildDocPayload } from './payload.js';
 import type { DocPayload } from './types.js';
 import { fixText } from '../fix.js';
 import { lintText } from '../lint.js';
-import { appendReply, resolveNote, createNote, NoteMutationError } from './mutate.js';
+import { appendReply, resolveNote, createNote, discardNote, NoteMutationError } from './mutate.js';
 
 // Static assets live next to the compiled server (dist/preview/assets/, populated by the build's
 // copy step). Resolved relative to this module so it works whether run from source-test or dist.
@@ -83,7 +83,7 @@ export function createPreviewServer(filePath: string): Server {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost');
 
-      const mutateRoute = /^\/api\/note\/([^/]+)\/(reply|resolve)$/.exec(url.pathname);
+      const mutateRoute = /^\/api\/note\/([^/]+)\/(reply|resolve|discard)$/.exec(url.pathname);
       if (req.method === 'POST' && mutateRoute) {
         const id = decodeURIComponent(mutateRoute[1]!);
         const verb = mutateRoute[2]!;
@@ -94,6 +94,8 @@ export function createPreviewServer(filePath: string): Server {
             const parsed = await readJsonBody(req);
             const body = isObj(parsed) && typeof parsed.body === 'string' ? parsed.body : '';
             payload = persist(filePath, (src) => appendReply(src, id, body, now));
+          } else if (verb === 'discard') {
+            payload = persist(filePath, (src) => discardNote(src, id));
           } else {
             payload = persist(filePath, (src) => resolveNote(src, id, now));
           }
@@ -113,13 +115,18 @@ export function createPreviewServer(filePath: string): Server {
             throw new NoteMutationError('kind must be "point" or "span"', 400);
           }
           const kind: 'point' | 'span' = rawKind;
+          const rawType = isObj(parsed) && typeof parsed.type === 'string' ? parsed.type : 'comment';
+          if (rawType !== 'comment' && rawType !== 'delete') {
+            throw new NoteMutationError('type must be "comment" or "delete"', 400);
+          }
+          const type: 'comment' | 'delete' = rawType;
           const start = isObj(parsed) && typeof parsed.start === 'number' ? parsed.start : NaN;
           const end = isObj(parsed) && typeof parsed.end === 'number' ? parsed.end : undefined;
           const body = isObj(parsed) && typeof parsed.body === 'string' ? parsed.body : '';
           const now = new Date().toISOString();
           let createdId = '';
           const payload = persist(filePath, (src) => {
-            const r = createNote(src, { kind, start, end, body, at: now });
+            const r = createNote(src, { kind, start, end, body, at: now, type });
             createdId = r.id;
             return r.output;
           });
