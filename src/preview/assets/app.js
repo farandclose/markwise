@@ -339,20 +339,75 @@
     });
   }
 
-  // Appearance: the control cycles a list of themes. Adding a theme later (e.g.
-  // 'sepia') turns this toggle into a picker with no other change. The OS-preference
-  // fallback applies only while the user has made no explicit choice.
-  const THEMES = ['dark', 'light'];
+  // Appearance: the toggle opens a small named picker (Dark / Light / Sepia). A direct pick beats
+  // cycling once there are three themes. The OS-preference fallback applies only while the user has
+  // made no explicit choice. Adding a theme later = one THEMES entry + its token block in app.css.
+  const THEMES = [
+    { id: 'dark', label: 'Dark', swatch: '#16171a' },
+    { id: 'light', label: 'Light', swatch: '#ffffff' },
+    { id: 'sepia', label: 'Sepia', swatch: '#e7d7b2' },
+  ];
+  let themeMenu = null;
+
   function setTheme(name, persist) {
     document.documentElement.setAttribute('data-theme', name);
     if (persist) { try { localStorage.setItem('mw-theme', name); } catch (e) {} }
-    if (themeBtn) themeBtn.title = 'Theme: ' + name + ' - click to switch';
+    if (themeBtn) themeBtn.title = 'Theme: ' + name;
+    if (themeMenu) {
+      Array.prototype.forEach.call(themeMenu.querySelectorAll('button'), function (b) {
+        b.setAttribute('aria-checked', String(b.dataset.themeId === name));
+      });
+    }
   }
+  function closeThemeMenu() {
+    if (!themeMenu || themeMenu.hidden) return;
+    themeMenu.hidden = true;
+    themeBtn.setAttribute('aria-expanded', 'false');
+  }
+  function openThemeMenu() {
+    themeMenu.hidden = false; // unhide first so offsetWidth is measurable for clamping
+    var r = themeBtn.getBoundingClientRect();
+    themeMenu.style.top = r.bottom + 6 + 'px';
+    var left = Math.min(r.left, window.innerWidth - themeMenu.offsetWidth - 8);
+    themeMenu.style.left = Math.max(8, left) + 'px';
+    themeBtn.setAttribute('aria-expanded', 'true');
+  }
+
   if (themeBtn) {
+    themeMenu = document.createElement('div');
+    themeMenu.className = 'mw-theme-menu';
+    themeMenu.setAttribute('role', 'menu');
+    themeMenu.hidden = true;
+    THEMES.forEach(function (t) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'menuitemradio');
+      item.dataset.themeId = t.id;
+      item.innerHTML =
+        '<span class="mw-theme-sw" style="background:' + t.swatch + '"></span>' +
+        '<span>' + esc(t.label) + '</span>' +
+        '<span class="mw-theme-tick" aria-hidden="true">✓</span>';
+      item.addEventListener('click', function (e) {
+        e.stopPropagation();
+        setTheme(t.id, true);
+        closeThemeMenu();
+        themeBtn.focus();
+      });
+      themeMenu.appendChild(item);
+    });
+    body.appendChild(themeMenu);
+
     setTheme(document.documentElement.getAttribute('data-theme') || 'dark', false);
-    themeBtn.addEventListener('click', function () {
-      var cur = document.documentElement.getAttribute('data-theme') || 'dark';
-      setTheme(THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length], true);
+
+    themeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (themeMenu.hidden) openThemeMenu(); else closeThemeMenu();
+    });
+    document.addEventListener('mousedown', function (e) {
+      if (!themeMenu.hidden && e.target !== themeBtn && !themeMenu.contains(e.target)) closeThemeMenu();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !themeMenu.hidden) { closeThemeMenu(); themeBtn.focus(); }
     });
   }
   if (window.matchMedia) {

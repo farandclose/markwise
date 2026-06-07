@@ -95,6 +95,45 @@
   --mw-anchor: rgba(255, 213, 92, 0.32);
 }
 
+/* Sepia: the opt-in "paper" reading mode. A committed warm parchment - real chroma, a warm-dark
+   ink (never black) - NOT the near-white cream that is the AI-default body bg. The annotation
+   tints are retuned to survive the warm surface: the pale amber comment vanishes on paper, so it
+   deepens to gold; replace/delete cool and deepen. Added purely as a token block + a THEMES entry. */
+:root[data-theme="sepia"] {
+  color-scheme: light;
+
+  --mw-bg: #e7d7b2;
+  --mw-surface: #f3e8cd;
+  --mw-toolbar-bg: rgba(231, 215, 178, 0.92);
+  --mw-ink: #332b16;
+  --mw-muted: #635733;                    /* AA: 5.0:1 on the warm bg (the harder of bg/surface) */
+  --mw-line: #d3bf95;
+
+  --mw-primary-bg: #332b16;
+  --mw-primary-ink: #f3e8cd;
+  --mw-primary-hover: #1f1a0c;
+  --mw-card-active-border: #332b16;
+  --mw-shadow-card: 0 2px 12px rgba(80, 58, 12, 0.16);
+
+  --mw-hover-tint: rgba(51, 43, 22, 0.08);
+  --mw-focus-ring: rgba(51, 43, 22, 0.32);
+
+  --mw-code-bg: #ddca9f;
+  --mw-code-inline-bg: #dccb9c;
+
+  --mw-error: #a3301a;
+
+  --mw-comment: rgba(196, 140, 28, 0.36);
+  --mw-comment-deep: rgba(196, 140, 28, 0.54);
+  --mw-replace: rgba(56, 108, 180, 0.22);
+  --mw-replace-deep: rgba(56, 108, 180, 0.36);
+  --mw-replace-line: #356fb4;
+  --mw-delete: rgba(176, 64, 52, 0.20);
+  --mw-delete-deep: rgba(176, 64, 52, 0.34);
+  --mw-insert: #1c8047;
+  --mw-anchor: rgba(196, 140, 28, 0.46);
+}
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -184,6 +223,40 @@ html, body {
   cursor: pointer;
 }
 .mw-theme:hover { color: var(--mw-ink); }
+
+/* Theme picker menu: the toggle opens a small named list (Dark / Light / Sepia) once there are
+   three themes - a direct pick beats cycling. Minimal per "the tool disappears". */
+.mw-theme-menu {
+  position: fixed;
+  z-index: 30;
+  background: var(--mw-surface);
+  border: 1px solid var(--mw-line);
+  border-radius: 10px;
+  box-shadow: var(--mw-shadow-card);
+  padding: 5px;
+  width: 156px;
+}
+.mw-theme-menu[hidden] { display: none; }
+.mw-theme-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--mw-ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.mw-theme-menu button:hover { background: var(--mw-hover-tint); }
+.mw-theme-menu button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
+.mw-theme-sw { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(128, 128, 128, 0.35); flex: 0 0 auto; }
+.mw-theme-tick { margin-left: auto; color: var(--mw-muted); visibility: hidden; }
+.mw-theme-menu button[aria-checked="true"] .mw-theme-tick { visibility: visible; }
 
 /* Stage: reading column + permanently reserved rail (spec section 1, section 5).
    A 3-track grid keeps the document viewport-centered AND reserves the rail track, so opening a

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Markwise — Sepia + Picker Explorer</title>
+    <style>
+      /* 3rd theme design step. Sepia is the deliberate, opt-in "paper" reading mode the user asked
+         for - NOT the AI-default cream body bg (which is banned as a default). To earn its place it
+         must be a COMMITTED warm palette: real chroma, a warm-dark ink (not pure black), and
+         annotation tints RETUNED to hold on the warm surface (the pale amber comment vanishes on
+         cream, so it deepens to gold; replace/delete cool and deepen). Two warmth levels compared,
+         plus the picker menu the toggle becomes. System fonts only. */
+
+      /* A — Parchment (lighter warm paper) */
+      .v-parchment {
+        --bg: #f1e7d0; --surface: #fbf5e6; --toolbar: rgba(241,231,208,0.92);
+        --ink: #3a3320; --muted: #8c7f63; --line: #ddceae; --line-strong: #c9b78e;
+        --primary: #3a3320; --primary-ink: #fbf5e6; --shadow: 0 2px 12px rgba(90,68,20,0.12);
+        --code: #e9dcc0;
+        --comment: rgba(212,156,38,0.32); --comment-deep: rgba(212,156,38,0.50);
+        --replace: rgba(64,120,194,0.20); --replace-line: #3f7fc4;
+        --delete: rgba(188,72,60,0.18); --insert: #1f8f4e;
+      }
+      /* B — Antique (deeper, more committed warmth) */
+      .v-antique {
+        --bg: #e7d7b2; --surface: #f3e8cd; --toolbar: rgba(231,215,178,0.92);
+        --ink: #332b16; --muted: #847651; --line: #d3bf95; --line-strong: #bca877;
+        --primary: #332b16; --primary-ink: #f3e8cd; --shadow: 0 2px 12px rgba(80,58,12,0.16);
+        --code: #ddca9f;
+        --comment: rgba(196,140,28,0.36); --comment-deep: rgba(196,140,28,0.54);
+        --replace: rgba(56,108,180,0.22); --replace-line: #356fb4;
+        --delete: rgba(176,64,52,0.20); --insert: #1c8047;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #2a2620; color: #cabfa6;
+        font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+      .page { max-width: 1120px; margin: 0 auto; padding: 36px 28px 80px; }
+      .page > h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 4px; color: #efe6cf; }
+      .page > p.sub { margin: 0 0 30px; font-size: 14px; color: #a99e84; }
+      .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+
+      /* One Markwise frame (surface set by the variant class on .frame) */
+      .frame { background: var(--bg); color: var(--ink); border-radius: 14px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); }
+      .vlabel { font-size: 12px; padding: 9px 16px; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--surface); }
+      .vlabel b { color: var(--ink); font-weight: 700; font-size: 13px; }
+
+      .bar { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--toolbar); border-bottom: 1px solid var(--line); }
+      .wm { font-weight: 700; letter-spacing: -0.01em; font-size: 14px; }
+      .doctitle { color: var(--muted); font-size: 13px; margin-right: auto; }
+      .theme-btn { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; font-size: 14px; }
+      .counter { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; }
+      .handoff { border: 1px solid var(--primary); background: var(--primary); color: var(--primary-ink); border-radius: 8px; padding: 6px 13px; font: inherit; font-size: 13px; font-weight: 600; }
+
+      /* Picker menu the ◐ toggle opens (shown open here) */
+      .menu { position: absolute; top: 46px; left: 14px; z-index: 5; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 5px; width: 150px; }
+      .menu button { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; border: none; background: none; color: var(--ink); font: inherit; font-size: 13px; padding: 7px 9px; border-radius: 7px; }
+      .menu button:hover { background: var(--line); }
+      .menu .swatch { width: 13px; height: 13px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.15); flex: 0 0 auto; }
+      .menu .check { margin-left: auto; color: var(--muted); }
+
+      .body { display: grid; grid-template-columns: minmax(0,1fr) 250px; gap: 22px; padding: 22px 18px 26px; }
+      .doc { font: 16px/1.66 "Iowan Old Style","Charter","Palatino",Georgia,serif; min-width: 0; }
+      .doc h2 { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 1.2rem; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 0.5em; }
+      .doc p { margin: 0 0 0.9em; }
+      .span { border-radius: 3px; padding: 0 1px; }
+      .t-comment { background: var(--comment); }
+      .t-replace { background: var(--replace); text-decoration: underline; text-decoration-color: var(--replace-line); text-underline-offset: 2px; }
+      .t-delete { background: var(--delete); text-decoration: line-through; }
+      .point { display: inline-block; width: 4px; height: 1.2em; vertical-align: text-bottom; margin: 0 2px; border-radius: 2px; background: var(--insert); box-shadow: 0 0 0 2px color-mix(in srgb, var(--insert) 22%, transparent); }
+
+      .card { border: 1px solid var(--primary); border-radius: 10px; background: var(--surface); padding: 12px 14px; box-shadow: var(--shadow); height: max-content; }
+      .card-head { display: flex; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+      .card-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--line-strong); border-radius: 999px; padding: 1px 7px; }
+      .card-snippet { color: var(--ink); font-size: 13px; }
+      .msg { padding: 8px 0; border-top: 1px solid var(--line); }
+      .msg-meta { display: flex; align-items: center; gap: 7px; font-size: 12px; margin-bottom: 3px; }
+      .dot { width: 6px; height: 6px; border-radius: 999px; }
+      .msg.reviewer .dot { background: var(--ink); } .msg.reviewer .by { color: var(--ink); font-weight: 600; }
+      .msg.agent .dot { background: var(--muted); } .msg.agent .by { color: var(--muted); font-weight: 600; }
+      .when { color: var(--muted); margin-left: auto; }
+      .msg-body { font-size: 13.5px; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>Markwise — 3rd theme (Sepia) + picker</h1>
+      <p class="sub">Two warmth levels for the opt-in paper reading mode, each shown in the real layout with all four annotation tints retuned to hold on the warm surface. The ◐ toggle becomes a small named picker (shown open). Dark + Light are unchanged.</p>
+
+      <div class="cols">
+        <!-- A -->
+        <section class="frame v-parchment">
+          <div class="vlabel">Option A &nbsp;·&nbsp; <b>Parchment</b> — lighter warm paper</div>
+          <div class="bar">
+            <button class="theme-btn">◐</button>
+            <span class="wm">Markwise</span><span class="doctitle">sample.md</span>
+            <button class="counter">6 notes</button><button class="handoff">Hand to agent</button>
+            <div class="menu">
+              <button><span class="swatch" style="background:#16171a"></span>Dark</button>
+              <button><span class="swatch" style="background:#ffffff"></span>Light</button>
+              <button><span class="swatch" style="background:#f1e7d0"></span>Sepia <span class="check">✓</span></button>
+            </div>
+          </div>
+          <div class="body">
+            <div class="doc">
+              <h2>Overview</h2>
+              <p>Nimbus is a collaborative notebook for teams who live in markdown. It ships by <span class="span t-replace">Q3</span><span class="point"></span> of next year.</p>
+              <p>The core promise: <span class="span t-comment">write once, review anywhere</span>. The market is <span class="span t-delete">large and growing</span>, and the wedge is plain-text specs.</p>
+            </div>
+            <aside class="card">
+              <div class="card-head"><span class="card-type">Comment</span><span class="card-snippet">write once, review anywhere</span></div>
+              <div class="msg reviewer"><div class="msg-meta"><span class="dot"></span><span class="by">Reviewer</span><span class="when">2h</span></div><div class="msg-body">Tighten to one sentence?</div></div>
+              <div class="msg agent"><div class="msg-meta"><span class="dot"></span><span class="by">Agent</span><span class="when">1h</span></div><div class="msg-body">Done — folded into the opener.</div></div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- B -->
+        <section class="frame v-antique">
+          <div class="vlabel">Option B &nbsp;·&nbsp; <b>Antique</b> — deeper, more committed warmth</div>
+          <div class="bar">
+            <button class="theme-btn">◐</button>
+            <span class="wm">Markwise</span><span class="doctitle">sample.md</span>
+            <button class="counter">6 notes</button><button class="handoff">Hand to agent</button>
+            <div class="menu">
+              <button><span class="swatch" style="background:#16171a"></span>Dark</button>
+              <button><span class="swatch" style="background:#ffffff"></span>Light</button>
+              <button><span class="swatch" style="background:#e7d7b2"></span>Sepia <span class="check">✓</span></button>
+            </div>
+          </div>
+          <div class="body">
+            <div class="doc">
+              <h2>Overview</h2>
+              <p>Nimbus is a collaborative notebook for teams who live in markdown. It ships by <span class="span t-replace">Q3</span><span class="point"></span> of next year.</p>
+              <p>The core promise: <span class="span t-comment">write once, review anywhere</span>. The market is <span class="span t-delete">large and growing</span>, and the wedge is plain-text specs.</p>
+            </div>
+            <aside class="card">
+              <div class="card-head"><span class="card-type">Comment</span><span class="card-snippet">write once, review anywhere</span></div>
+              <div class="msg reviewer"><div class="msg-meta"><span class="dot"></span><span class="by">Reviewer</span><span class="when">2h</span></div><div class="msg-body">Tighten to one sentence?</div></div>
+              <div class="msg agent"><div class="msg-meta"><span class="dot"></span><span class="by">Agent</span><span class="when">1h</span></div><div class="msg-body">Done — folded into the opener.</div></div>
+            </aside>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>
