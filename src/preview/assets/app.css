@@ -321,8 +321,24 @@ html, body {
 /* --- Notes revealed: in-prose treatments (spec section 4) --- */
 .mw-revealed .mw-span { border-radius: 3px; padding: 0 1px; cursor: pointer; }
 .mw-revealed .mw-span.mw-type-comment { background: var(--mw-comment); }
-.mw-revealed .mw-span.mw-type-replace { background: var(--mw-replace); text-decoration: underline; text-decoration-color: var(--mw-replace-line); }
+.mw-revealed .mw-span.mw-type-replace { text-decoration: line-through; text-decoration-color: var(--mw-muted); color: var(--mw-muted); }
 .mw-revealed .mw-span.mw-type-delete  { background: var(--mw-delete); text-decoration: line-through; }
+
+/* Committed replace: the proposed replacement, rendered inline right after the struck original
+   (spec 2026-06-08-previewer-replace-inline-display). Hidden in clean read mode so the reading
+   column still equals the file; shown only when notes are revealed. It echoes the compose field's
+   tint + underline but is static text - not editable, no caret. */
+.mw-replace-text { display: none; }
+.mw-revealed .mw-replace-text {
+  display: inline;
+  background: var(--mw-replace);
+  color: var(--mw-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--mw-replace-line);
+  border-radius: 3px;
+  padding: 0 2px;
+  margin-left: 3px;
+}
 
 .mw-revealed .mw-point {
   display: inline-block;
@@ -340,6 +356,7 @@ html, body {
 /* Active note: deeper shade (spec section 4) */
 .mw-revealed .mw-span.mw-type-comment.active { background: var(--mw-comment-deep); }
 .mw-revealed .mw-span.mw-type-replace.active { background: var(--mw-replace-deep); }
+.mw-revealed .mw-replace-text.active { background: var(--mw-replace-deep); }
 .mw-revealed .mw-span.mw-type-delete.active  { background: var(--mw-delete-deep); }
 .mw-revealed .mw-point.active { outline: 2px solid var(--mw-insert); outline-offset: 1px; }
 
