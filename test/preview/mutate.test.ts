@@ -374,6 +374,61 @@ describe('createNote (delete suggestions)', () => {
   });
 });
 
+describe('createNote (replace suggestions)', () => {
+  const at = '2026-06-08T00:00:00Z';
+
+  it('creates a replace note over a span: carries text, empty thread when no comment', () => {
+    const wStart = FRESH.indexOf('wedge');
+    const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'replace', text: 'niche' });
+    expect(output).toContain(`<!-- mw:${id} -->wedge<!-- /mw:${id} -->`);
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.type).toBe('replace');
+    expect(rec.text).toBe('niche');
+    expect(rec.state).toBe('open');
+    expect(rec.disp).toBe('none');
+    expect(rec.anchor.kind).toBe('span');
+    expect(typeof rec.anchor.hash).toBe('string');
+    expect(rec.thread).toEqual([]);
+  });
+
+  it('seeds a reviewer thread message when a replace carries a comment', () => {
+    const wStart = FRESH.indexOf('wedge');
+    const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: 'clearer word', at, type: 'replace', text: 'niche' });
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.thread).toEqual([{ by: 'reviewer', at, body: 'clearer word' }]);
+  });
+
+  it('rejects a replace with no replacement text', () => {
+    const wStart = FRESH.indexOf('wedge');
+    expect(() => createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'replace' })).toThrow(NoteMutationError);
+  });
+
+  it('rejects a replace whose replacement text is only whitespace', () => {
+    const wStart = FRESH.indexOf('wedge');
+    expect(() => createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'replace', text: '   ' })).toThrow(NoteMutationError);
+  });
+
+  it('rejects a point replace (a replace must wrap a span)', () => {
+    expect(() => createNote(FRESH, { kind: 'point', start: 5, body: '', at, type: 'replace', text: 'x' })).toThrow(NoteMutationError);
+  });
+
+  it('stores the replacement text as typed, preserving surrounding spaces', () => {
+    const wStart = FRESH.indexOf('wedge');
+    const { output, id } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'replace', text: ' spaced ' });
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.text).toBe(' spaced ');
+  });
+
+  it('the created replace record is self-correct: fixText changes nothing and it lints clean', async () => {
+    const { fixText } = await import('../../src/fix.js');
+    const { lintText } = await import('../../src/lint.js');
+    const wStart = FRESH.indexOf('wedge');
+    const { output } = createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'replace', text: 'niche' });
+    expect(fixText(output).changes).toEqual([]);
+    expect(lintText(output).filter((f) => f.severity === 'error')).toEqual([]);
+  });
+});
+
 describe('discardNote', () => {
   const SPAN = [
     '# Demo',

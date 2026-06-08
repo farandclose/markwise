@@ -200,16 +200,24 @@ export function createNote(
     end?: number;
     body: string;
     at: string;
-    type?: 'comment' | 'delete';
+    type?: 'comment' | 'delete' | 'replace';
+    text?: string;
   }
 ): { output: string; id: string } {
   const type = opts.type ?? 'comment';
   const body = opts.body.trim();
-  // A comment's intent lives in its body, so it is required. A delete's intent is the wrapped span,
-  // so its comment is optional (D27/D42); an empty body yields an empty thread.
+  // A comment's intent lives in its body, so it is required. A delete/replace's intent is the wrapped
+  // span (plus, for replace, the proposed text), so the comment is optional (D27/D42); an empty body
+  // yields an empty thread.
   if (type === 'comment' && body === '') throw new NoteMutationError('comment body is empty', 400);
-  if (type === 'delete' && opts.kind !== 'span') {
-    throw new NoteMutationError('a delete suggestion must wrap a span', 400);
+  if ((type === 'delete' || type === 'replace') && opts.kind !== 'span') {
+    throw new NoteMutationError(`a ${type} suggestion must wrap a span`, 400);
+  }
+  // A replace carries the proposed replacement text (L124: text present iff insert/replace). It is
+  // stored as typed (not trimmed) so intentional surrounding spaces survive; only whitespace-only
+  // (or missing) text is rejected.
+  if (type === 'replace' && (typeof opts.text !== 'string' || opts.text.trim() === '')) {
+    throw new NoteMutationError('a replace suggestion needs replacement text', 400);
   }
   const { kind, start } = opts;
   if (!Number.isInteger(start) || start < 0 || start > source.length) {
@@ -249,6 +257,7 @@ export function createNote(
     state: 'open',
     disp: 'none',
     anchor,
+    ...(type === 'replace' ? { text: opts.text } : {}),
     thread: body === '' ? [] : [{ by: 'reviewer', at: opts.at, body }],
   };
   return { output: insertLogRecord(withMarkers, JSON.stringify(record)), id };
