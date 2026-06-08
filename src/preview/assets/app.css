@@ -571,3 +571,23 @@ html, body {
 .mw-discard-overlay button:hover { background: var(--mw-hover-tint); }
 .mw-discard-overlay button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
 .mw-discard-remove { border-color: var(--mw-error); color: var(--mw-error); }
+
+/* Suggest-replace in-place compose (transient; wiped by load() on commit). The struck original is
+   the replace target - a MUTED strikethrough, deliberately not delete-red, so a replace never reads
+   as a delete. The inline editable field holds the proposed text and echoes the committed replace
+   color (tint + underline) so it reads as a suggestion while it is typed. */
+.mw-replace-target {
+  text-decoration: line-through;
+  text-decoration-color: var(--mw-muted);
+  color: var(--mw-muted);
+}
+.mw-replace-field {
+  outline: none;
+  background: var(--mw-replace);
+  color: var(--mw-ink);
+  border-radius: 3px;
+  padding: 0 2px;
+  margin-left: 3px;
+  box-shadow: inset 0 -2px 0 var(--mw-replace-line);
+  white-space: pre-wrap;
+}

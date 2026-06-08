@@ -17,6 +17,7 @@
 
   let activeId = null;
   let pendingTarget = null; // { kind:'span'|'point', start, end? } awaiting a draft
+  let replaceCompose = null; // { target:{start,end}, fieldEl, wrapEl } while typing a replacement in place
   let pillEl = null;
   let handoff = null; // latest /api/doc handoff bundle { path, waitingCount, text }
   let anchorEls = []; // highlight rectangles over the text a draft is anchored to
@@ -157,7 +158,7 @@
         '<span class="mw-card-snippet">' + esc(noteSnippet(note)) + '</span>';
       card.appendChild(head);
 
-      if (note.type === 'delete') {
+      if (note.type === 'delete' || note.type === 'replace') {
         const discardBtn = document.createElement('button');
         discardBtn.type = 'button';
         discardBtn.className = 'mw-card-discard';
@@ -516,6 +517,112 @@
       .catch(function (err) { showToast(err.message || 'Delete failed'); });
   }
 
+  // Wrap the current selection's range in a strikethrough "replace target" span. Returns the wrapper
+  // (or null if it cannot be wrapped). surroundContents handles the clean single-node case; the
+  // extractContents fallback handles a selection crossing .mw-run / element boundaries and is marked
+  // so cancel can repaint (the fallback can disturb the breadcrumb runs in that region). The wrap is
+  // transient: load() repaints from the server on commit, so it never persists.
+  function wrapReplaceTarget(range) {
+    var wrap = document.createElement('span');
+    wrap.className = 'mw-replace-target';
+    try {
+      range.surroundContents(wrap);
+    } catch (e) {
+      try {
+        wrap.appendChild(range.extractContents());
+        range.insertNode(wrap);
+        wrap.dataset.mwFallback = '1';
+      } catch (e2) {
+        return null;
+      }
+    }
+    return wrap;
+  }
+
+  // Select text and start typing to propose a replacement (Google-Docs Suggesting mode): the
+  // selection renders struck-through and an inline editable field opens right after it, seeded with
+  // the typed character. The original stays on screen so the reading column keeps reflecting the file.
+  function startReplace(target, seed) {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    var range = sel.getRangeAt(0);
+    if (body.classList.contains('mw-clean')) reveal(true);
+    clearPill();
+    var wrap = wrapReplaceTarget(range);
+    if (!wrap) return; // could not wrap: let the key no-op
+    sel.removeAllRanges();
+
+    var field = document.createElement('span');
+    field.className = 'mw-replace-field';
+    field.setAttribute('contenteditable', 'true');
+    field.textContent = seed;
+    wrap.parentNode.insertBefore(field, wrap.nextSibling);
+    replaceCompose = { target: target, fieldEl: field, wrapEl: wrap };
+
+    field.focus();
+    var r = document.createRange();
+    r.selectNodeContents(field);
+    r.collapse(false); // caret to the end of the seed character
+    sel.removeAllRanges();
+    sel.addRange(r);
+
+    field.addEventListener('keydown', onReplaceFieldKey);
+  }
+
+  function onReplaceFieldKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commitReplace(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelReplace(); }
+  }
+
+  // Commit the in-place replacement: POST a replace note carrying the typed text, then load()
+  // repaints (original -> mw-type-replace style, replacement in the rail card) and wipes the
+  // transient compose DOM. An empty/whitespace field is a cancel (an empty replacement is a delete).
+  function commitReplace() {
+    if (!replaceCompose) return;
+    var c = replaceCompose;
+    var text = c.fieldEl.textContent;
+    if (!text || text.trim() === '') { cancelReplace(); return; }
+    replaceCompose = null; // prevent re-entry; load()/catch handles the transient DOM
+    createReplace(c.target, text);
+  }
+
+  function createReplace(target, text) {
+    fetch('/api/note', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'replace', kind: 'span', start: target.start, end: target.end, text: text }),
+    })
+      .then(function (r) {
+        if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Replace failed'); });
+        return r.json();
+      })
+      .then(function (data) {
+        if (data && data.createdId) activeId = data.createdId;
+        return load();
+      })
+      .catch(function (err) { showToast(err.message || 'Replace failed'); return load(); });
+  }
+
+  // Cancel the in-place compose: remove the field, unwrap the struck target (restoring the original
+  // text), clear the selection. If the wrap used the extractContents fallback, repaint from the
+  // server to guarantee the breadcrumb runs in that region are pristine.
+  function cancelReplace() {
+    if (!replaceCompose) return;
+    var c = replaceCompose;
+    replaceCompose = null;
+    c.fieldEl.removeEventListener('keydown', onReplaceFieldKey);
+    if (c.fieldEl.parentNode) c.fieldEl.parentNode.removeChild(c.fieldEl);
+    var wrap = c.wrapEl;
+    var usedFallback = wrap && wrap.dataset && wrap.dataset.mwFallback === '1';
+    if (wrap && wrap.parentNode) {
+      while (wrap.firstChild) wrap.parentNode.insertBefore(wrap.firstChild, wrap);
+      wrap.parentNode.removeChild(wrap);
+    }
+    var sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+    if (usedFallback) load();
+  }
+
   function openDraft(target) {
     // Capture the live selection range before clearing the pill or focusing the textarea, so the
     // anchor highlight can use precise per-line rects.
@@ -643,6 +750,30 @@
     e.preventDefault();
     clearPill();
     createDelete(target);
+  });
+
+  // Select text and type a printable character to propose a replacement (Google-Docs Suggesting
+  // mode). Guards: a bare single character (no Cmd/Ctrl/Alt), focus not already in an editable field
+  // (so typing in a reply/draft - or in the compose field itself - is never hijacked), a non-collapsed
+  // selection mapping to a source span, and no compose already open. Otherwise the key behaves
+  // normally, which in this read-only doc is a no-op.
+  document.addEventListener('keydown', function (e) {
+    if (replaceCompose) return;
+    if (e.key == null || e.key.length !== 1) return; // printable single char only (not Enter/Tab/etc.)
+    if (e.metaKey || e.ctrlKey || e.altKey) return;   // let Cmd+C / Ctrl+A / etc. pass through
+    var ae = document.activeElement;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
+    var target = spanTargetFromSelection();
+    if (!target) return; // collapsed or non-mappable selection: the key no-ops
+    e.preventDefault();
+    startReplace(target, e.key);
+  });
+
+  // Clicking outside the compose field commits it (Google-Docs behavior); an empty field cancels.
+  document.addEventListener('mousedown', function (e) {
+    if (replaceCompose && e.target !== replaceCompose.fieldEl && !replaceCompose.fieldEl.contains(e.target)) {
+      commitReplace();
+    }
   });
 
   // A double-click that lands on a gap leaves the selection collapsed; offer a point comment there.
