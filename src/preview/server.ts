@@ -116,17 +116,18 @@ export function createPreviewServer(filePath: string): Server {
           }
           const kind: 'point' | 'span' = rawKind;
           const rawType = isObj(parsed) && typeof parsed.type === 'string' ? parsed.type : 'comment';
-          if (rawType !== 'comment' && rawType !== 'delete') {
-            throw new NoteMutationError('type must be "comment" or "delete"', 400);
+          if (rawType !== 'comment' && rawType !== 'delete' && rawType !== 'replace') {
+            throw new NoteMutationError('type must be "comment", "delete", or "replace"', 400);
           }
-          const type: 'comment' | 'delete' = rawType;
+          const type: 'comment' | 'delete' | 'replace' = rawType;
           const start = isObj(parsed) && typeof parsed.start === 'number' ? parsed.start : NaN;
           const end = isObj(parsed) && typeof parsed.end === 'number' ? parsed.end : undefined;
           const body = isObj(parsed) && typeof parsed.body === 'string' ? parsed.body : '';
+          const text = isObj(parsed) && typeof parsed.text === 'string' ? parsed.text : undefined;
           const now = new Date().toISOString();
           let createdId = '';
           const payload = persist(filePath, (src) => {
-            const r = createNote(src, { kind, start, end, body, at: now, type });
+            const r = createNote(src, { kind, start, end, body, at: now, type, text });
             createdId = r.id;
             return r.output;
           });

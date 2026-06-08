@@ -218,7 +218,7 @@ describe('suggest-delete endpoints', () => {
 
   it('rejects an unsupported type (400)', async () => {
     const base = await start(DOC);
-    const res = await post(base, '/api/note', { type: 'replace', kind: 'span', start: 3, end: 8, body: 'x' });
+    const res = await post(base, '/api/note', { type: 'insert', kind: 'span', start: 3, end: 8, body: 'x' });
     expect(res.status).toBe(400);
   });
 
@@ -241,5 +241,49 @@ describe('suggest-delete endpoints', () => {
     const base = await start(DOC);
     const res = await post(base, '/api/note/nope/discard');
     expect(res.status).toBe(404);
+  });
+});
+
+describe('suggest-replace endpoints', () => {
+  it('creates a replace suggestion over a span, carrying the typed text', async () => {
+    const base = await start(DOC);
+    const wStart = DOC.indexOf('Ships');
+    const res = await post(base, '/api/note', { type: 'replace', kind: 'span', start: wStart, end: wStart + 5, text: 'Sells' });
+    expect(res.status).toBe(200);
+    const payload = await res.json();
+    expect(payload.createdId).toBe('n1');
+    const note = payload.notes.find((n: { id: string }) => n.id === 'n1');
+    expect(note.type).toBe('replace');
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).toContain('<!-- mw:n1 -->Ships<!-- /mw:n1 -->'); // original stays; it is a suggestion
+    expect(onDisk).toContain('"type":"replace"');
+    expect(onDisk).toContain('"text":"Sells"');
+  });
+
+  it('rejects a replace with no text (400) and leaves the file byte-identical', async () => {
+    const base = await start(DOC);
+    const before = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    const wStart = DOC.indexOf('Ships');
+    const res = await post(base, '/api/note', { type: 'replace', kind: 'span', start: wStart, end: wStart + 5 });
+    expect(res.status).toBe(400);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
+  });
+
+  it('rejects a point replace (400)', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note', { type: 'replace', kind: 'point', start: 3, text: 'x' });
+    expect(res.status).toBe(400);
+  });
+
+  it('discards a replace suggestion, restoring the original prose (generic discardNote)', async () => {
+    const base = await start(DOC);
+    const wStart = DOC.indexOf('Ships');
+    await post(base, '/api/note', { type: 'replace', kind: 'span', start: wStart, end: wStart + 5, text: 'Sells' });
+    const res = await post(base, '/api/note/n1/discard');
+    expect(res.status).toBe(200);
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).not.toContain('mw:n1');
+    expect(onDisk).not.toContain('"text":"Sells"');
+    expect(onDisk).toContain('Ships'); // original restored
   });
 });
