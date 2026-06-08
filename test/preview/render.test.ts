@@ -147,3 +147,47 @@ describe('renderDocumentHtml: a marker that opens a paragraph', () => {
     expect(SRC.slice(Number(m![1]), Number(m![2]))).toBe(unescape(m![3]!));
   });
 });
+
+describe('renderDocumentHtml: committed replace shows its replacement inline', () => {
+  it('emits the replacement as a sibling span right after the struck original', () => {
+    const html = renderDocumentHtml(DOC);
+    // s1 wraps "Q3" and proposes "Q4": the original span closes, then the replacement span follows.
+    expect(html).toContain('</span><span class="mw-replace-text" data-mw-id="s1">Q4</span>');
+  });
+
+  it('emits a replacement span only for replace notes (not delete or insert)', () => {
+    const html = renderDocumentHtml(DOC);
+    const count = (html.match(/class="mw-replace-text"/g) || []).length;
+    expect(count).toBe(1); // only s1 (replace); s2 (insert) and s3 (delete) get none
+    expect(html).not.toContain('mw-replace-text" data-mw-id="s3"'); // delete close stays a plain </span>
+  });
+
+  it('HTML-escapes the replacement text', () => {
+    const src = [
+      '# T',
+      '',
+      'Use <!-- mw:r1 -->X<!-- /mw:r1 -->.',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"r1","type":"replace","state":"open","disp":"none","anchor":{"kind":"span","hash":"0","before":"Use ","after":"."},"text":"a < b & c","thread":[]}',
+      '-->',
+      '',
+    ].join('\n');
+    const html = renderDocumentHtml(src);
+    expect(html).toContain('<span class="mw-replace-text" data-mw-id="r1">a &lt; b &amp; c</span>');
+  });
+
+  it('does not emit a replacement span for a resolved replace (not open)', () => {
+    const src = [
+      '# T',
+      '',
+      'Ships by <!-- mw:s1 -->Q3<!-- /mw:s1 -->.',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"s1","type":"replace","state":"resolved","disp":"none","anchor":{"kind":"span","hash":"0","before":"by ","after":"."},"text":"Q4","thread":[]}',
+      '-->',
+      '',
+    ].join('\n');
+    expect(renderDocumentHtml(src)).not.toContain('mw-replace-text');
+  });
+});

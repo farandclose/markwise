@@ -61,7 +61,17 @@ function convertMarker(raw: string, env: RenderEnv): string | null {
   const id = m[2]!;
   const note = env.openById.get(id);
   if (!note) return raw; // orphan / resolved / unknown: leave the literal comment
-  if (isClose) return '</span>';
+  if (isClose) {
+    // A committed, open replace shows its proposed text inline, right after the struck original
+    // (spec 2026-06-08-previewer-replace-inline-display). The text lives in the note record, not the
+    // prose; it is escaped as content here and hidden in clean read mode by CSS. The replacement span
+    // carries the same data-mw-id so it activates with - and highlights alongside - the original.
+    // Comment/delete/insert (and replace with no text) close plainly.
+    if (note.type === 'replace' && note.text) {
+      return `</span><span class="mw-replace-text" data-mw-id="${escapeAttr(id)}">${md.utils.escapeHtml(note.text)}</span>`;
+    }
+    return '</span>';
+  }
   const typeClass = `mw-type-${note.type}`;
   if (note.anchorKind === 'point') {
     return `<span class="mw-point ${typeClass}" data-mw-id="${escapeAttr(id)}"></span>`;
