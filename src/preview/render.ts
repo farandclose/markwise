@@ -74,7 +74,13 @@ function convertMarker(raw: string, env: RenderEnv): string | null {
   }
   const typeClass = `mw-type-${note.type}`;
   if (note.anchorKind === 'point') {
-    return `<span class="mw-point ${typeClass}" data-mw-id="${escapeAttr(id)}"></span>`;
+    // A committed insert shows its proposed text inside the point span (spec
+    // 2026-06-09-previewer-suggest-insert). The text lives in the note record, not the prose; it is
+    // escaped as content and hidden in clean read mode by the existing `.mw-clean .mw-point` rule.
+    // A point comment stays empty (its pillar marker). Single span (no nested/sibling span): an
+    // insert point has only the inserted text, and it shares the span's data-mw-id for free activation.
+    const inner = note.type === 'insert' && note.text ? md.utils.escapeHtml(note.text) : '';
+    return `<span class="mw-point ${typeClass}" data-mw-id="${escapeAttr(id)}">${inner}</span>`;
   }
   return `<span class="mw-span ${typeClass}" data-mw-id="${escapeAttr(id)}">`;
 }

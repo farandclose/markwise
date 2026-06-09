@@ -57,9 +57,38 @@ describe('renderDocumentHtml: marker highlights', () => {
     expect(html).toContain('Q3');
   });
 
-  it('renders an open point note as a self-closing typed span', () => {
+  it('renders a committed insert with its proposed text inside the point span', () => {
     const html = renderDocumentHtml(DOC);
-    expect(html).toContain('<span class="mw-point mw-type-insert" data-mw-id="s2"></span>');
+    expect(html).toContain('<span class="mw-point mw-type-insert" data-mw-id="s2"> More.</span>');
+  });
+
+  it('renders a point comment as an empty point span (no inserted text)', () => {
+    const src = [
+      '# T',
+      '',
+      'Done.<!-- mw:p1 -->',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"p1","type":"comment","state":"open","disp":"none","anchor":{"kind":"point","before":".","after":""},"thread":[{"by":"agent","at":"2026-06-01T10:00:00Z","body":"hi"}]}',
+      '-->',
+      '',
+    ].join('\n');
+    expect(renderDocumentHtml(src)).toContain('<span class="mw-point mw-type-comment" data-mw-id="p1"></span>');
+  });
+
+  it('HTML-escapes the inserted text', () => {
+    const src = [
+      '# T',
+      '',
+      'Use it.<!-- mw:i1 -->',
+      '',
+      '<!-- mw:log v=1',
+      '{"id":"i1","type":"insert","state":"open","disp":"none","anchor":{"kind":"point","before":"it.","after":""},"text":" a < b & c","thread":[]}',
+      '-->',
+      '',
+    ].join('\n');
+    const html = renderDocumentHtml(src);
+    expect(html).toContain('<span class="mw-point mw-type-insert" data-mw-id="i1"> a &lt; b &amp; c</span>');
   });
 
   it('drops the mw:log block and its records', () => {
