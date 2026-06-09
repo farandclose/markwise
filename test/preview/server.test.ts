@@ -216,9 +216,9 @@ describe('suggest-delete endpoints', () => {
     expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
   });
 
-  it('rejects an unsupported type (400)', async () => {
+  it('rejects an unknown note type (400)', async () => {
     const base = await start(DOC);
-    const res = await post(base, '/api/note', { type: 'insert', kind: 'span', start: 3, end: 8, body: 'x' });
+    const res = await post(base, '/api/note', { type: 'frobnicate', kind: 'span', start: 3, end: 8, body: 'x' });
     expect(res.status).toBe(400);
   });
 
@@ -285,5 +285,50 @@ describe('suggest-replace endpoints', () => {
     expect(onDisk).not.toContain('mw:n1');
     expect(onDisk).not.toContain('"text":"Sells"');
     expect(onDisk).toContain('Ships'); // original restored
+  });
+});
+
+describe('suggest-insert endpoints', () => {
+  it('creates an insert suggestion at a point, carrying the typed text', async () => {
+    const base = await start(DOC);
+    const gap = DOC.indexOf('by'); // a clean inter-word gap, not inside the s1 span
+    const res = await post(base, '/api/note', { type: 'insert', kind: 'point', start: gap, text: 'soon ' });
+    expect(res.status).toBe(200);
+    const payload = await res.json();
+    expect(payload.createdId).toBe('n1');
+    const note = payload.notes.find((n: { id: string }) => n.id === 'n1');
+    expect(note.type).toBe('insert');
+    expect(note.text).toBe('soon ');
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).toContain('"type":"insert"');
+    expect(onDisk).toContain('"text":"soon "');
+    expect(/"kind":"point"/.test(onDisk)).toBe(true);
+  });
+
+  it('rejects a span insert (400) and leaves the file byte-identical', async () => {
+    const base = await start(DOC);
+    const before = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    const wStart = DOC.indexOf('Ships');
+    const res = await post(base, '/api/note', { type: 'insert', kind: 'span', start: wStart, end: wStart + 5, text: 'x' });
+    expect(res.status).toBe(400);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
+  });
+
+  it('rejects an insert with no text (400)', async () => {
+    const base = await start(DOC);
+    const gap = DOC.indexOf('by');
+    const res = await post(base, '/api/note', { type: 'insert', kind: 'point', start: gap });
+    expect(res.status).toBe(400);
+  });
+
+  it('discards an insert suggestion, removing marker and record (generic discardNote)', async () => {
+    const base = await start(DOC);
+    const gap = DOC.indexOf('by');
+    await post(base, '/api/note', { type: 'insert', kind: 'point', start: gap, text: 'soon ' });
+    const res = await post(base, '/api/note/n1/discard');
+    expect(res.status).toBe(200);
+    const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    expect(onDisk).not.toContain('mw:n1');
+    expect(onDisk).not.toContain('"text":"soon "');
   });
 });

@@ -116,10 +116,10 @@ export function createPreviewServer(filePath: string): Server {
           }
           const kind: 'point' | 'span' = rawKind;
           const rawType = isObj(parsed) && typeof parsed.type === 'string' ? parsed.type : 'comment';
-          if (rawType !== 'comment' && rawType !== 'delete' && rawType !== 'replace') {
-            throw new NoteMutationError('type must be "comment", "delete", or "replace"', 400);
+          if (rawType !== 'comment' && rawType !== 'insert' && rawType !== 'delete' && rawType !== 'replace') {
+            throw new NoteMutationError('type must be "comment", "insert", "delete", or "replace"', 400);
           }
-          const type: 'comment' | 'delete' | 'replace' = rawType;
+          const type: 'comment' | 'insert' | 'delete' | 'replace' = rawType;
           const start = isObj(parsed) && typeof parsed.start === 'number' ? parsed.start : NaN;
           const end = isObj(parsed) && typeof parsed.end === 'number' ? parsed.end : undefined;
           const body = isObj(parsed) && typeof parsed.body === 'string' ? parsed.body : '';
