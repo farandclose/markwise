@@ -340,7 +340,7 @@ html, body {
   margin-left: 3px;
 }
 
-.mw-revealed .mw-point {
+.mw-revealed .mw-point.mw-type-comment {
   display: inline-block;
   width: 4px;
   height: 1.2em;
@@ -358,13 +358,30 @@ html, body {
 .mw-revealed .mw-span.mw-type-replace.active { background: var(--mw-replace-deep); }
 .mw-revealed .mw-replace-text.active { background: var(--mw-replace-deep); }
 .mw-revealed .mw-span.mw-type-delete.active  { background: var(--mw-delete-deep); }
-.mw-revealed .mw-point.active { outline: 2px solid var(--mw-insert); outline-offset: 1px; }
+.mw-revealed .mw-point.mw-type-comment.active { outline: 2px solid var(--mw-insert); outline-offset: 1px; }
+
+/* Committed insert: the proposed text, rendered inline at the point (spec
+   2026-06-09-previewer-suggest-insert). Hidden in clean read mode via .mw-clean .mw-point so the
+   reading column equals the file. Green tint + underline (the insert color), echoing the compose
+   field; --mw-insert is saturated, so the tint is derived with color-mix (as the pillar halo is). */
+.mw-revealed .mw-point.mw-type-insert {
+  background: color-mix(in srgb, var(--mw-insert) 18%, transparent);
+  color: var(--mw-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--mw-insert);
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.mw-revealed .mw-point.mw-type-insert.active {
+  background: color-mix(in srgb, var(--mw-insert) 30%, transparent);
+}
 
 /* --- P3 motion: quiet, state-conveying only, 150-200ms ease-out, reduced-motion-safe (PRODUCT.md
    restraint - no choreography, no bounce, no per-card stagger). --- */
 /* 1. Reveal crossfade: highlights settle in (transparent -> tint) rather than snapping on; the rail
    fades in as one block (not staggered cards). Both fire once, on the clean->revealed toggle. */
-.mw-span, .mw-replace-text { transition: background-color 180ms ease; }
+.mw-span, .mw-replace-text, .mw-point.mw-type-insert { transition: background-color 180ms ease; }
 .mw-revealed .mw-rail { animation: mw-fade-in 180ms ease-out; }
 @keyframes mw-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 /* 2. Card <-> highlight bond: activating either end eases both ends together (the highlight to its
@@ -606,5 +623,14 @@ html, body {
   padding: 0 2px;
   margin-left: 3px;
   box-shadow: inset 0 -2px 0 var(--mw-replace-line);
+  white-space: pre-wrap;
+}
+.mw-insert-field {
+  outline: none;
+  background: color-mix(in srgb, var(--mw-insert) 18%, transparent);
+  color: var(--mw-ink);
+  border-radius: 3px;
+  padding: 0 2px;
+  box-shadow: inset 0 -2px 0 var(--mw-insert);
   white-space: pre-wrap;
 }
