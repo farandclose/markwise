@@ -429,6 +429,57 @@ describe('createNote (replace suggestions)', () => {
   });
 });
 
+describe('createNote (insert suggestions)', () => {
+  const at = '2026-06-09T00:00:00Z';
+  const gapOf = (s: string) => s.indexOf('plain text') + 'plain'.length; // between "plain" and "text"
+
+  it('the created insert record is self-correct: fixText changes nothing and it lints clean', async () => {
+    const { fixText } = await import('../../src/fix.js');
+    const { lintText } = await import('../../src/lint.js');
+    const { output } = createNote(FRESH, { kind: 'point', start: gapOf(FRESH), body: '', at, type: 'insert', text: ' fresh' });
+    expect(fixText(output).changes).toEqual([]);
+    expect(lintText(output).filter((f) => f.severity === 'error')).toEqual([]);
+  });
+
+  it('creates an insert note at a point: carries text, point anchor, empty thread when no comment', () => {
+    const { output, id } = createNote(FRESH, { kind: 'point', start: gapOf(FRESH), body: '', at, type: 'insert', text: ' fresh' });
+    expect(output).toContain(`plain<!-- mw:${id} -->`);
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.type).toBe('insert');
+    expect(rec.text).toBe(' fresh');
+    expect(rec.state).toBe('open');
+    expect(rec.disp).toBe('none');
+    expect(rec.anchor.kind).toBe('point');
+    expect(rec.anchor.hash).toBeUndefined();
+    expect(rec.thread).toEqual([]);
+  });
+
+  it('seeds a reviewer thread message when an insert carries a comment', () => {
+    const { output, id } = createNote(FRESH, { kind: 'point', start: gapOf(FRESH), body: 'add an adjective', at, type: 'insert', text: ' fresh' });
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.thread).toEqual([{ by: 'reviewer', at, body: 'add an adjective' }]);
+  });
+
+  it('rejects a span insert (an insert must be a point)', () => {
+    const wStart = FRESH.indexOf('wedge');
+    expect(() => createNote(FRESH, { kind: 'span', start: wStart, end: wStart + 5, body: '', at, type: 'insert', text: 'x' })).toThrow(NoteMutationError);
+  });
+
+  it('rejects an insert with no text', () => {
+    expect(() => createNote(FRESH, { kind: 'point', start: gapOf(FRESH), body: '', at, type: 'insert' })).toThrow(NoteMutationError);
+  });
+
+  it('rejects an insert whose text is only whitespace', () => {
+    expect(() => createNote(FRESH, { kind: 'point', start: gapOf(FRESH), body: '', at, type: 'insert', text: '   ' })).toThrow(NoteMutationError);
+  });
+
+  it('stores the inserted text as typed, preserving surrounding spaces', () => {
+    const { output, id } = createNote(FRESH, { kind: 'point', start: gapOf(FRESH), body: '', at, type: 'insert', text: ' spaced ' });
+    const rec = JSON.parse(output.split('\n').find((l) => l.trim().startsWith(`{"id":"${id}"`))!);
+    expect(rec.text).toBe(' spaced ');
+  });
+});
+
 describe('discardNote', () => {
   const SPAN = [
     '# Demo',
