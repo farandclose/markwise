@@ -18,6 +18,7 @@
   let activeId = null;
   let pendingTarget = null; // { kind:'span'|'point', start, end? } awaiting a draft
   let replaceCompose = null; // { target:{start,end}, fieldEl, wrapEl } while typing a replacement in place
+  let insertCompose = null; // { fieldEl, target } while typing an insertion in place
   let pillEl = null;
   let handoff = null; // latest /api/doc handoff bundle { path, waitingCount, text }
   let anchorEls = []; // highlight rectangles over the text a draft is anchored to
@@ -158,7 +159,7 @@
         '<span class="mw-card-snippet">' + esc(noteSnippet(note)) + '</span>';
       card.appendChild(head);
 
-      if (note.type === 'delete' || note.type === 'replace') {
+      if (note.type === 'delete' || note.type === 'replace' || note.type === 'insert') {
         const discardBtn = document.createElement('button');
         discardBtn.type = 'button';
         discardBtn.className = 'mw-card-discard';
@@ -240,7 +241,7 @@
     if (!notes.length) {
       const empty = document.createElement('p');
       empty.className = 'mw-rail-empty';
-      empty.textContent = 'Select text to comment, or press Delete to suggest a deletion.';
+      empty.textContent = 'Select text to comment, press Delete to suggest a deletion, or click and type to suggest an insertion.';
       railEl.appendChild(empty);
     }
   }
@@ -367,6 +368,19 @@
       return { kind: 'span', start: s, end: en, rect: range.getBoundingClientRect() };
     }
     return null;
+  }
+
+  // Read a collapsed caret into a point insert target, or null if there is no caret or it does not
+  // map to a breadcrumb run. The collapsed-selection counterpart of spanTargetFromSelection; drives
+  // the click+type insert gesture. A click in read-only-but-selectable prose leaves a collapsed
+  // caret in the clicked text node, which no handler clears, so it survives to the keydown.
+  function pointTargetFromCaret() {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !sel.isCollapsed) return null;
+    var range = sel.getRangeAt(0);
+    var off = srcOffset(range.startContainer, range.startOffset);
+    if (off == null) return null;
+    return { kind: 'point', start: off };
   }
 
   function showPill(target) {
@@ -623,6 +637,83 @@
     if (usedFallback) load();
   }
 
+  // Click a point and type to propose an insertion (Google-Docs Suggesting mode): an inline editable
+  // field opens at the caret, seeded with the typed character. Unlike replace there is no original to
+  // strike; committing stores the text as an insert note at that point. The field is transient -
+  // load() repaints from the server on commit/cancel, so it never persists.
+  function startInsert(target, seed) {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    var range = sel.getRangeAt(0).cloneRange();
+    if (body.classList.contains('mw-clean')) reveal(true);
+    clearPill();
+
+    var field = document.createElement('span');
+    field.className = 'mw-insert-field';
+    field.setAttribute('contenteditable', 'true');
+    field.textContent = seed;
+    // Insert at the caret. Inside a text node this splits the node and places the field between the
+    // halves, so it appears exactly at the insertion point inside the surrounding breadcrumb run.
+    range.insertNode(field);
+    insertCompose = { fieldEl: field, target: target };
+
+    field.focus();
+    var r = document.createRange();
+    r.selectNodeContents(field);
+    r.collapse(false); // caret to the end of the seed character
+    sel.removeAllRanges();
+    sel.addRange(r);
+
+    field.addEventListener('keydown', onInsertFieldKey);
+  }
+
+  function onInsertFieldKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commitInsert(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelInsert(); }
+  }
+
+  // Commit the in-place insertion: POST an insert note carrying the typed text, then load() repaints
+  // (the text renders inline at the point, a card appears) and wipes the transient field. An
+  // empty/whitespace field is a cancel.
+  function commitInsert() {
+    if (!insertCompose) return;
+    var c = insertCompose;
+    var text = c.fieldEl.textContent;
+    if (!text || text.trim() === '') { cancelInsert(); return; }
+    insertCompose = null; // prevent re-entry; load()/catch handles the transient DOM
+    createInsert(c.target, text);
+  }
+
+  function createInsert(target, text) {
+    fetch('/api/note', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'insert', kind: 'point', start: target.start, text: text }),
+    })
+      .then(function (r) {
+        if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Insert failed'); });
+        return r.json();
+      })
+      .then(function (data) {
+        if (data && data.createdId) activeId = data.createdId;
+        return load();
+      })
+      .catch(function (err) { showToast(err.message || 'Insert failed'); return load(); });
+  }
+
+  // Cancel the in-place insertion: remove the field and repaint from the server, which restores the
+  // breadcrumb run that range.insertNode split when the field was placed.
+  function cancelInsert() {
+    if (!insertCompose) return;
+    var c = insertCompose;
+    insertCompose = null;
+    c.fieldEl.removeEventListener('keydown', onInsertFieldKey);
+    if (c.fieldEl.parentNode) c.fieldEl.parentNode.removeChild(c.fieldEl);
+    var sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+    load(); // the field split a text node; repaint to restore pristine breadcrumbs
+  }
+
   function openDraft(target) {
     // Capture the live selection range before clearing the pill or focusing the textarea, so the
     // anchor highlight can use precise per-line rects.
@@ -758,21 +849,29 @@
   // selection mapping to a source span, and no compose already open. Otherwise the key behaves
   // normally, which in this read-only doc is a no-op.
   document.addEventListener('keydown', function (e) {
-    if (replaceCompose) return;
+    if (replaceCompose || insertCompose) return;
     if (e.key == null || e.key.length !== 1) return; // printable single char only (not Enter/Tab/etc.)
     if (e.metaKey || e.ctrlKey || e.altKey) return;   // let Cmd+C / Ctrl+A / etc. pass through
     var ae = document.activeElement;
     if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
-    var target = spanTargetFromSelection();
-    if (!target) return; // collapsed or non-mappable selection: the key no-ops
+    var span = spanTargetFromSelection();
+    if (span) { e.preventDefault(); startReplace(span, e.key); return; } // non-collapsed selection -> replace
+    var point = pointTargetFromCaret();
+    if (!point) return; // no mappable caret: the key no-ops
     e.preventDefault();
-    startReplace(target, e.key);
+    startInsert(point, e.key); // collapsed caret -> insert
   });
 
   // Clicking outside the compose field commits it (Google-Docs behavior); an empty field cancels.
   document.addEventListener('mousedown', function (e) {
     if (replaceCompose && e.target !== replaceCompose.fieldEl && !replaceCompose.fieldEl.contains(e.target)) {
       commitReplace();
+    }
+  });
+
+  document.addEventListener('mousedown', function (e) {
+    if (insertCompose && e.target !== insertCompose.fieldEl && !insertCompose.fieldEl.contains(e.target)) {
+      commitInsert();
     }
   });
 
