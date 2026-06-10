@@ -269,7 +269,7 @@ html, body {
   padding: 48px 24px 120px;
 }
 /* Reading column: serif body for an editorial, document-first read (P1). */
-.mw-doc { grid-column: 2; width: 100%; max-width: var(--mw-col); font-family: var(--mw-font-serif); font-size: 17.5px; line-height: 1.72; }
+.mw-doc { position: relative; grid-column: 2; width: 100%; max-width: var(--mw-col); font-family: var(--mw-font-serif); font-size: 17.5px; line-height: 1.72; }
 /* Headings stay sans - serif lives only in the prose, never the chrome or the heads. */
 .mw-doc h1, .mw-doc h2, .mw-doc h3, .mw-doc h4, .mw-doc h5, .mw-doc h6 { font-family: var(--mw-font-sans); }
 .mw-doc h1 { font-size: 2.15rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; margin: 0 0 0.55em; }
@@ -633,4 +633,24 @@ html, body {
   padding: 0 2px;
   box-shadow: inset 0 -2px 0 var(--mw-insert);
   white-space: pre-wrap;
+}
+
+/* Synthetic caret (Op2): an overlay bar above the prose, never in it. Position is set from the
+   live collapsed selection by app.js; .mw-doc is its containing block so it scrolls with the
+   column. pointer-events:none so it can never swallow a click. */
+.mw-caret {
+  position: absolute;
+  width: 2px;
+  background: var(--mw-ink);
+  pointer-events: none;
+  display: none;
+  animation: mw-caret-blink 1.1s step-end infinite;
+}
+.mw-caret.mw-caret-on { display: block; }
+@keyframes mw-caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mw-caret { animation: none; }
 }
