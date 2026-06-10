@@ -22,12 +22,91 @@
   let pillEl = null;
   let handoff = null; // latest /api/doc handoff bundle { path, waitingCount, text }
   let anchorEls = []; // highlight rectangles over the text a draft is anchored to
+  let caretEl = null; // the synthetic caret overlay (created lazily, lives inside .mw-doc)
+  let caretRaf = 0; // pending selectionchange -> updateCaret animation frame (0 = none)
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
   }
+
+  // ---- Synthetic caret (Op2) ------------------------------------------------------------------
+  // An overlay bar that shows where the collapsed selection sits in the prose. It never enters
+  // the text flow (position:absolute in .mw-doc, pointer-events:none), so the document cannot
+  // move (Principle 1). load() wipes .mw-doc's children; ensureCaretEl re-appends on demand.
+  function ensureCaretEl() {
+    if (!caretEl || !caretEl.isConnected) {
+      caretEl = document.createElement('span');
+      caretEl.className = 'mw-caret';
+      caretEl.setAttribute('aria-hidden', 'true');
+      docEl.appendChild(caretEl);
+    }
+    return caretEl;
+  }
+
+  function hideCaret() {
+    if (caretEl) caretEl.classList.remove('mw-caret-on');
+  }
+
+  // Position the caret at the collapsed selection point, or hide it (non-collapsed selection,
+  // selection outside the doc, compose open). Rects are viewport-space, translated into .mw-doc's
+  // box, so page scroll needs no listener. A collapsed range can report a zero rect at soft
+  // line-wraps and text-node boundaries; probe one character around the caret for an edge instead
+  // - the caret must never simply vanish while the selection is inside the doc (spec section 4).
+  function updateCaret() {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || !sel.isCollapsed || replaceCompose || insertCompose) {
+      hideCaret();
+      return;
+    }
+    var node = sel.focusNode;
+    if (!node || !docEl.contains(node) || (caretEl && node === caretEl)) {
+      hideCaret();
+      return;
+    }
+    var range = sel.getRangeAt(0).cloneRange();
+    range.collapse(true);
+    var r = range.getBoundingClientRect();
+    var rect = { left: r.left, top: r.top, height: r.height };
+    if (r.width === 0 && r.height === 0 && node.nodeType === 3) {
+      var probe = document.createRange();
+      var off = Math.min(sel.focusOffset, node.length);
+      if (off < node.length) {
+        probe.setStart(node, off);
+        probe.setEnd(node, off + 1);
+        var pr = probe.getBoundingClientRect();
+        rect = { left: pr.left, top: pr.top, height: pr.height };
+      } else if (off > 0) {
+        probe.setStart(node, off - 1);
+        probe.setEnd(node, off);
+        var pl = probe.getBoundingClientRect();
+        rect = { left: pl.right, top: pl.top, height: pl.height };
+      }
+    }
+    if (!rect.height) {
+      hideCaret();
+      return;
+    }
+    var host = docEl.getBoundingClientRect();
+    var c = ensureCaretEl();
+    c.style.left = (rect.left - host.left) + 'px';
+    c.style.top = (rect.top - host.top) + 'px';
+    c.style.height = rect.height + 'px';
+    c.classList.add('mw-caret-on');
+  }
+
+  // One pending frame max: selectionchange fires in bursts (mouse drags, Selection.modify calls).
+  // This single re-sync point also covers clicks placing a caret, selections collapsing, Esc
+  // clearing the selection, and load() wiping the column.
+  document.addEventListener('selectionchange', function () {
+    if (caretRaf) return;
+    caretRaf = window.requestAnimationFrame(function () {
+      caretRaf = 0;
+      updateCaret();
+    });
+  });
+  window.addEventListener('resize', updateCaret);
 
   function idSel(id) {
     const safe = window.CSS && CSS.escape ? CSS.escape(id) : id;
@@ -902,7 +981,12 @@
       clearAnchor();
       var s = window.getSelection();
       if (s) s.removeAllRanges();
+      return;
     }
+    // No pill, no draft: park the keyboard caret - clear any doc selection (the caret follows
+    // via the selectionchange re-sync).
+    var ds = window.getSelection();
+    if (ds && ds.rangeCount > 0 && ds.focusNode && docEl.contains(ds.focusNode)) ds.removeAllRanges();
   });
 
   // Clicking elsewhere dismisses a pending pill.
