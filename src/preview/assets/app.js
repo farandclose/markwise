@@ -94,18 +94,19 @@
       .catch(function (err) { showToast(err.message || 'Action failed'); });
   }
 
-  // The x on a delete card opens a card-scoped confirm: a slight scrim over the card's own content
+  // The x on a card opens a card-scoped confirm: a slight scrim over the card's own content
   // with the prompt centered on top (no reflow of the doc or other cards; never a browser confirm()
-  // dialog). Remove -> discard the note (restores the prose); Cancel/Esc -> back out.
-  function openDiscardConfirm(card, id) {
+  // dialog). Remove -> discard the note (restores the prose); Cancel/Esc -> back out. `noun` is
+  // "comment" or "suggestion" so the copy names what is being erased.
+  function openDiscardConfirm(card, id, noun) {
     if (card.querySelector('.mw-discard-overlay')) return;
     var overlay = document.createElement('div');
     overlay.className = 'mw-discard-overlay';
     overlay.setAttribute('role', 'alertdialog');
-    overlay.setAttribute('aria-label', 'Remove this suggestion?');
+    overlay.setAttribute('aria-label', 'Remove this ' + noun + '?');
     var q = document.createElement('p');
     q.className = 'mw-discard-q';
-    q.textContent = 'Remove this suggestion?';
+    q.textContent = 'Remove this ' + noun + '?';
     var actions = document.createElement('div');
     actions.className = 'mw-discard-actions';
     var cancel = document.createElement('button');
@@ -159,19 +160,18 @@
         '<span class="mw-card-snippet">' + esc(noteSnippet(note)) + '</span>';
       card.appendChild(head);
 
-      if (note.type === 'delete' || note.type === 'replace' || note.type === 'insert') {
-        const discardBtn = document.createElement('button');
-        discardBtn.type = 'button';
-        discardBtn.className = 'mw-card-discard';
-        discardBtn.title = 'Discard this suggestion';
-        discardBtn.setAttribute('aria-label', 'Discard this suggestion');
-        discardBtn.textContent = '×';
-        discardBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          openDiscardConfirm(card, note.id);
-        });
-        head.appendChild(discardBtn);
-      }
+      const noun = note.type === 'comment' ? 'comment' : 'suggestion';
+      const discardBtn = document.createElement('button');
+      discardBtn.type = 'button';
+      discardBtn.className = 'mw-card-discard';
+      discardBtn.title = 'Discard this ' + noun;
+      discardBtn.setAttribute('aria-label', 'Discard this ' + noun);
+      discardBtn.textContent = '×';
+      discardBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        openDiscardConfirm(card, note.id, noun);
+      });
+      head.appendChild(discardBtn);
 
       const threadEl = document.createElement('div');
       threadEl.className = 'mw-thread';
