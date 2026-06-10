@@ -5,6 +5,7 @@ import { lintText } from './lint.js';
 import { fixText } from './fix.js';
 import { status, type StatusReport } from './status.js';
 import { buildPromptOutput } from './prompt.js';
+import { buildSetupOutput } from './setup.js';
 import { stripText } from './strip.js';
 import { createPreviewServer } from './preview/server.js';
 import type { Finding } from './types.js';
@@ -16,6 +17,7 @@ Usage:
   markwise status <file...> [--json]
   markwise prompt <file> [--author]
   markwise export <file> [--output <path>]   (alias: strip)
+  markwise agent-setup                       (alias: setup) print coding-agent setup instructions
   markwise preview <file>                    open the document in a local web previewer
 
 Options:
@@ -239,6 +241,18 @@ function promptCommand(args: Args): number {
   return 0;
 }
 
+function agentSetupCommand(): number {
+  let template: string;
+  try {
+    template = readFileSync(new URL('../SETUP_PROMPT.md', import.meta.url), 'utf8');
+  } catch {
+    process.stderr.write('markwise: cannot find SETUP_PROMPT.md in the package\n');
+    return 2;
+  }
+  process.stdout.write(buildSetupOutput({ template }) + '\n');
+  return 0;
+}
+
 function exportCommand(args: Args): number {
   if (args.files.length !== 1) {
     process.stderr.write('markwise export: expects exactly one input file\n');
@@ -333,6 +347,9 @@ function main(): void {
   }
   if (args.command === 'prompt') {
     process.exit(promptCommand(args));
+  }
+  if (args.command === 'agent-setup' || args.command === 'setup') {
+    process.exit(agentSetupCommand());
   }
   if (args.command === 'export' || args.command === 'strip') {
     process.exit(exportCommand(args));
