@@ -21,6 +21,7 @@
   let insertCompose = null; // { fieldEl, target } while typing an insertion in place
   let pillEl = null;
   let handoff = null; // latest /api/doc handoff bundle { path, waitingCount, text }
+  let docVersion = null; // fingerprint of the file content this page rendered; echoed on every POST
   let anchorEls = []; // highlight rectangles over the text a draft is anchored to
   let caretEl = null; // the synthetic caret overlay (created lazily, lives inside .mw-doc)
   let caretRaf = 0; // pending selectionchange -> updateCaret animation frame (0 = none)
@@ -159,20 +160,46 @@
     return Promise.resolve(false);
   }
 
-  function send(url, bodyObj) {
+  // Every mutation goes through here: it carries the x-mw-version precondition (the server 409s
+  // if the file changed since this page rendered, so a stale tab can never mis-anchor a note) and
+  // surfaces failures as an Error with a `.status` for the catch handlers to inspect.
+  function apiPost(url, bodyObj) {
+    var headers = { 'x-mw-version': docVersion || '' };
+    if (bodyObj) headers['content-type'] = 'application/json';
     return fetch(url, {
       method: 'POST',
-      headers: bodyObj ? { 'content-type': 'application/json' } : {},
+      headers: headers,
       body: bodyObj ? JSON.stringify(bodyObj) : undefined,
-    })
-      .then(function (r) {
-        if (!r.ok) {
-          return r.json().then(function (e) { throw new Error(e.error || 'Request failed'); });
-        }
-        return r.json();
-      })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.json().then(function (e) {
+          var err = new Error(e.error || 'Request failed');
+          err.status = r.status;
+          throw err;
+        });
+      }
+      return r.json();
+    });
+  }
+
+  // Toast an API failure. Returns true for a stale-version rejection (409, or 428 missing header)
+  // so the caller knows to repaint from the server - the page was acting on text that moved.
+  function apiErrorToast(err, fallbackMsg) {
+    var stale = !!(err && (err.status === 409 || err.status === 428));
+    showToast(
+      stale
+        ? 'Document changed - view refreshed. Please redo that action.'
+        : (err && err.message) || fallbackMsg
+    );
+    return stale;
+  }
+
+  function send(url, bodyObj) {
+    return apiPost(url, bodyObj)
       .then(function () { return load(); })
-      .catch(function (err) { showToast(err.message || 'Action failed'); });
+      .catch(function (err) {
+        if (apiErrorToast(err, 'Action failed')) return load();
+      });
   }
 
   // The x on a card opens a card-scoped confirm: a slight scrim over the card's own content
@@ -596,20 +623,14 @@
   function createDelete(target) {
     var sel = window.getSelection();
     if (sel) sel.removeAllRanges();
-    fetch('/api/note', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ type: 'delete', kind: 'span', start: target.start, end: target.end }),
-    })
-      .then(function (r) {
-        if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Delete failed'); });
-        return r.json();
-      })
+    apiPost('/api/note', { type: 'delete', kind: 'span', start: target.start, end: target.end })
       .then(function (data) {
         if (data && data.createdId) activeId = data.createdId;
         return load();
       })
-      .catch(function (err) { showToast(err.message || 'Delete failed'); });
+      .catch(function (err) {
+        if (apiErrorToast(err, 'Delete failed')) return load();
+      });
   }
 
   // Wrap the current selection's range in a strikethrough "replace target" span. Returns the wrapper
@@ -682,20 +703,12 @@
   }
 
   function createReplace(target, text) {
-    fetch('/api/note', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ type: 'replace', kind: 'span', start: target.start, end: target.end, text: text }),
-    })
-      .then(function (r) {
-        if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Replace failed'); });
-        return r.json();
-      })
+    apiPost('/api/note', { type: 'replace', kind: 'span', start: target.start, end: target.end, text: text })
       .then(function (data) {
         if (data && data.createdId) activeId = data.createdId;
         return load();
       })
-      .catch(function (err) { showToast(err.message || 'Replace failed'); return load(); });
+      .catch(function (err) { apiErrorToast(err, 'Replace failed'); return load(); });
   }
 
   // Cancel the in-place compose: remove the field, unwrap the struck target (restoring the original
@@ -766,20 +779,12 @@
   }
 
   function createInsert(target, text) {
-    fetch('/api/note', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ type: 'insert', kind: 'point', start: target.start, text: text }),
-    })
-      .then(function (r) {
-        if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Insert failed'); });
-        return r.json();
-      })
+    apiPost('/api/note', { type: 'insert', kind: 'point', start: target.start, text: text })
       .then(function (data) {
         if (data && data.createdId) activeId = data.createdId;
         return load();
       })
-      .catch(function (err) { showToast(err.message || 'Insert failed'); return load(); });
+      .catch(function (err) { apiErrorToast(err, 'Insert failed'); return load(); });
   }
 
   // Cancel the in-place insertion: remove the field and repaint from the server, which restores the
@@ -844,21 +849,21 @@
       add.disabled = true;
       var payload = { kind: target.kind, start: target.start, body: text };
       if (target.kind === 'span') payload.end = target.end;
-      fetch('/api/note', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-        .then(function (r) {
-          if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Create failed'); });
-          return r.json();
-        })
+      apiPost('/api/note', payload)
         .then(function (data) {
           if (data && data.createdId) activeId = data.createdId; // activate the new note after repaint
           clearAnchor();
           return load();
         })
-        .catch(function (err) { showToast(err.message || 'Create failed'); add.disabled = false; });
+        .catch(function (err) {
+          // Stale tab: the draft's offsets point into text that moved, so the draft cannot be
+          // retried - repaint and let the reviewer re-select. Other errors keep the draft editable.
+          if (apiErrorToast(err, 'Create failed')) {
+            clearAnchor();
+            return load();
+          }
+          add.disabled = false;
+        });
     });
 
     actions.appendChild(cancel);
@@ -869,33 +874,62 @@
     ta.focus();
   }
 
+  function applyPayload(payload) {
+    docVersion = payload.version || null;
+    titleEl.textContent = payload.title || '';
+    document.title = (payload.title ? payload.title + ' - ' : '') + 'Markwise Preview';
+    docEl.innerHTML = payload.html || '';
+    countEl.textContent = String(payload.openCount || 0);
+    renderRail(payload.notes || []);
+    handoff = payload.handoff || null;
+    if (handoffBtn) {
+      var waiting = !!(handoff && handoff.waitingCount > 0);
+      handoffBtn.disabled = !waiting;
+      handoffBtn.title = waiting ? '' : 'No notes waiting on the agent';
+    }
+    // Re-apply the active note if it survived the repaint; otherwise clear it.
+    if (activeId != null && railEl.querySelector('.mw-card' + idSel(activeId))) {
+      activate(activeId);
+    } else {
+      activeId = null;
+    }
+  }
+
   function load() {
     return fetch('/api/doc')
       .then(function (r) { return r.json(); })
-      .then(function (payload) {
-        titleEl.textContent = payload.title || '';
-        document.title = (payload.title ? payload.title + ' - ' : '') + 'Markwise Preview';
-        docEl.innerHTML = payload.html || '';
-        countEl.textContent = String(payload.openCount || 0);
-        renderRail(payload.notes || []);
-        handoff = payload.handoff || null;
-        if (handoffBtn) {
-          var waiting = !!(handoff && handoff.waitingCount > 0);
-          handoffBtn.disabled = !waiting;
-          handoffBtn.title = waiting ? '' : 'No notes waiting on the agent';
-        }
-        // Re-apply the active note if it survived the repaint; otherwise clear it.
-        if (activeId != null && railEl.querySelector('.mw-card' + idSel(activeId))) {
-          activate(activeId);
-        } else {
-          activeId = null;
-        }
-      })
+      .then(applyPayload)
       .catch(function (err) {
         docEl.innerHTML = '<p class="mw-error">Could not load the document.</p>';
         console.error('[markwise] failed to load /api/doc', err);
       });
   }
+
+  // True while transient UI (a pill, an open draft, an in-place compose, a discard confirm) would
+  // be destroyed by a repaint - the focus revalidation must never eat work in progress.
+  function hasTransientUi() {
+    return !!(
+      pillEl ||
+      replaceCompose ||
+      insertCompose ||
+      railEl.querySelector('.mw-draft') ||
+      document.querySelector('.mw-confirming')
+    );
+  }
+
+  // Returning to the tab is the natural moment the file may have changed underneath the page (an
+  // agent pass, an editor save). Revalidate quietly: repaint only when the version actually moved
+  // and nothing transient is open; a stale POST would be refused (409) anyway - this just makes the
+  // common case seamless.
+  window.addEventListener('focus', function () {
+    if (hasTransientUi()) return;
+    fetch('/api/doc')
+      .then(function (r) { return r.json(); })
+      .then(function (payload) {
+        if (payload && payload.version && payload.version !== docVersion) applyPayload(payload);
+      })
+      .catch(function () { /* offline blip: keep the current view */ });
+  });
 
   // A completed selection (double-click a word, triple-click a line, or drag a phrase) shows the
   // pill on mouse release. All three end with a mouseup while a non-collapsed selection exists.

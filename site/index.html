@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Markwise - the human-agent review layer for markdown</title>
 <meta name="description" content="Anchored comments, suggested edits, threads, and review state for agent-written markdown - all carried inside the file itself.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b27a16'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' font-weight='600' fill='%23faf7f0' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
 <style>
   :root{
     --paper:#faf7f0; --ink:#211c15; --soft:#6b6051; --line:#e4dccc;
@@ -58,9 +59,29 @@
   .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
   .cta-links{display:flex;gap:.6rem;align-items:center;margin:.9rem 0 0}
 
+  /* problem columns */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.2rem}
+  .col h3{margin:.1rem 0 .3rem;font-size:1.06rem}
+  .col .does{font-size:.92rem;color:var(--soft);margin:0 0 .7rem}
+  .col .fail{font-size:.96rem;margin:.2rem 0 0;padding-top:.7rem;border-top:1px dashed var(--line)}
+  .col .fail::before{content:"why it fails";display:block;font-family:var(--mono);
+    font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--strike);margin-bottom:.25rem}
+
+  /* reframe insight */
+  .insight{margin:2rem 0;padding:1.5rem 1.6rem;background:#fffdf6;
+    border:1px solid var(--accent-soft);border-radius:12px}
+  .insight .label{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:.5rem}
+  .insight .not{color:var(--strike);text-decoration:line-through;text-decoration-color:#d8a99f;
+    font-size:1.05rem;margin:0}
+  .insight .is{font-size:1.32rem;line-height:1.35;font-weight:600;margin:.4rem 0 0;letter-spacing:-.01em}
+  .insight .gloss{color:var(--soft);font-size:.98rem;margin:.7rem 0 0}
+
   @media(max-width:560px){
     body{padding-top:2.2rem}
     .paste-row{flex-direction:column;align-items:flex-start}
+    .cols{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -88,6 +109,36 @@
       <a class="btn btn-ghost" href="https://github.com/farandclose/markwise">View on GitHub</a>
     </div>
   </header>
+
+  <section>
+    <p class="kicker">01 - The problem</p>
+    <h2>The two things you can do today</h2>
+    <p>There are only two moves available, and each loses something the agent needs.</p>
+    <div class="cols">
+      <div class="col">
+        <h3>1. Reply in chat</h3>
+        <p class="does">You retype the feedback into the terminal: "in section 3, the timeline should be H2 not Q4..."</p>
+        <p class="fail">It loses the exact <b>location</b> and the <b>intent</b>. You describe a spot in prose instead of pointing at it. The longer the doc, the worse it gets.</p>
+      </div>
+      <div class="col">
+        <h3>2. Edit the markdown directly</h3>
+        <p class="does">You open the file and change the text yourself, or scribble inline notes.</p>
+        <p class="fail">The agent gets <b>no structured signal</b>: what changed, what is still open, what needs a response. A raw diff is not a review.</p>
+      </div>
+    </div>
+    <p>In Google Docs you comment and suggest edits <em>right on the text</em>, with threads and states. That fluency simply does not exist for the markdown an agent just wrote you.</p>
+  </section>
+
+  <section>
+    <p class="kicker">02 - The reframe</p>
+    <h2>This is not a markdown-comments problem</h2>
+    <div class="insight">
+      <p class="label">The core insight</p>
+      <p class="not">The problem is that markdown needs comments.</p>
+      <p class="is">Agent-written documents need a durable feedback loop that <em>both</em> humans <em>and</em> agents can understand.</p>
+      <p class="gloss">Markwise is not annotation syntax. It is a <b>workflow contract</b>: the human leaves anchored, structured feedback; the agent revises and answers every item; the human decides what is resolved; and the document carries the whole history without polluting a normal read.</p>
+    </div>
+  </section>
 
 </main>
 <script>

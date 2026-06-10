@@ -2,6 +2,7 @@ import { basename } from 'node:path';
 import { extractNotes } from './notes.js';
 import { renderDocumentHtml } from './render.js';
 import { status } from '../status.js';
+import { shortHash } from '../hash.js';
 import { buildHandoffText } from './handoff.js';
 import type { DocPayload } from './types.js';
 
@@ -28,6 +29,7 @@ export function buildDocPayload(source: string, filePath: string): DocPayload {
   const open = extractNotes(source).filter((n) => n.state === 'open');
   const waitingCount = status(source).waitingOnAgent.length;
   return {
+    version: shortHash(source),
     title: firstH1(source) ?? basename(filePath),
     html: renderDocumentHtml(source),
     notes: open,

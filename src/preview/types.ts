@@ -24,6 +24,12 @@ export interface HandoffInfo {
 
 /** The JSON the server returns from GET /api/doc. */
 export interface DocPayload {
+  /**
+   * Fingerprint (shortHash) of the exact file content this payload was built from. The browser
+   * echoes it back in `x-mw-version` on every mutation; the server refuses (409) when the file
+   * on disk no longer matches, so a stale tab can never anchor a note to text that moved.
+   */
+  version: string;
   /** Document title: the first H1, else the file's basename. */
   title: string;
   /** The document rendered to HTML, with mw: markers turned into highlight spans. */
