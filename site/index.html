@@ -78,10 +78,74 @@
   .insight .is{font-size:1.32rem;line-height:1.35;font-weight:600;margin:.4rem 0 0;letter-spacing:-.01em}
   .insight .gloss{color:var(--soft);font-size:.98rem;margin:.7rem 0 0}
 
+  /* demo */
+  .demo-frame{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;box-shadow:0 1px 3px rgba(33,28,21,.05)}
+  .demo-bar{display:flex;align-items:center;gap:.7rem;padding:.55rem .9rem;
+    border-bottom:1px solid var(--line);background:#f6f1e6}
+  .demo-bar .winbtns{display:flex;gap:.32rem}
+  .demo-bar .winbtns i{width:.6rem;height:.6rem;border-radius:50%;background:var(--line);display:block}
+  .demo-bar .fname{font-family:var(--mono);font-size:.74rem;color:var(--soft);letter-spacing:.06em}
+  .demo-body{display:grid;grid-template-columns:1.45fr 1fr;gap:0}
+  .demo-doc{padding:1.3rem 1.4rem;border-right:1px solid var(--line)}
+  .demo-doc .dheading{font-weight:600;font-size:1.12rem;margin:0 0 .5rem}
+  .demo-doc .dheading .hash{font-family:var(--mono);font-size:.8rem;color:var(--line);
+    margin-right:.45rem;vertical-align:.08em}
+  .demo-doc .dtext{font-size:1rem;margin:0;line-height:1.7}
+  .demo-thread{padding:1.1rem 1rem;display:flex;flex-direction:column;gap:.6rem;
+    background:#fcfaf4;min-height:11rem}
+
+  .anchor .old,.anchor .new{border-radius:3px;padding:0 .12em;transition:background .3s,color .3s}
+  .anchor .new{display:none}
+  .note-card{background:var(--paper);border:1px solid var(--line);border-radius:9px;
+    padding:.6rem .75rem;font-size:.88rem;line-height:1.5;
+    opacity:0;transform:translateY(7px);visibility:hidden;
+    transition:opacity .3s ease,transform .3s ease,visibility .3s}
+  .note-card p{font-size:inherit;margin:0}
+  .note-card .who{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;
+    text-transform:uppercase;margin:0 0 .3rem}
+  .note-card .who.you{color:var(--accent)}
+  .note-card .who.agent{color:var(--good)}
+  .note-card.reply{margin-left:.8rem}
+  .resolved-chip{display:inline-flex;align-self:flex-start;align-items:center;gap:.4rem;
+    font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--good);background:var(--good-soft);border:1px solid #cadfc6;border-radius:999px;
+    padding:.28rem .7rem;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s}
+
+  /* demo states */
+  .demo[data-step="1"] .anchor .old{background:var(--accent-soft)}
+  .demo[data-step="1"] .note-card.comment,
+  .demo[data-step="2"] .note-card.comment,
+  .demo[data-step="2"] .note-card.reply{opacity:1;transform:none;visibility:visible}
+  .demo[data-step="2"] .anchor .old{background:#f7e7e3;color:var(--strike);
+    text-decoration:line-through;text-decoration-color:#cf8d80}
+  .demo[data-step="2"] .anchor .new,.demo[data-step="3"] .anchor .new{display:inline}
+  .demo[data-step="2"] .anchor .new{background:var(--good-soft);color:#27502f}
+  .demo[data-step="3"] .anchor .old{display:none}
+  .demo[data-step="3"] .note-card.comment,.demo[data-step="3"] .note-card.reply{
+    opacity:.45;transform:none;visibility:visible}
+  .demo[data-step="3"] .resolved-chip{opacity:1;visibility:visible}
+
+  .demo-controls{display:flex;align-items:center;gap:.9rem;margin:.9rem 0 0}
+  .step-dots{display:flex;gap:.4rem}
+  .step-dots i{width:.5rem;height:.5rem;border-radius:50%;background:var(--line);display:block;
+    transition:background .2s}
+  .step-dots i.on{background:var(--accent)}
+  .btn[disabled]{opacity:.4;cursor:default}
+  .btn[disabled]:hover{border-color:var(--line);color:var(--ink)}
+  .demo-caption{font-size:.95rem;color:var(--soft);margin:.6rem 0 0;min-height:2.6em}
+
+  @media (prefers-reduced-motion:reduce){
+    .note-card,.resolved-chip,.anchor .old,.anchor .new,.step-dots i{transition:none}
+  }
+
   @media(max-width:560px){
     body{padding-top:2.2rem}
     .paste-row{flex-direction:column;align-items:flex-start}
     .cols{grid-template-columns:1fr}
+    .demo-body{grid-template-columns:1fr}
+    .demo-doc{border-right:none;border-bottom:1px solid var(--line)}
+    .demo-thread{min-height:0}
   }
 </style>
 </head>
@@ -140,6 +204,42 @@
     </div>
   </section>
 
+  <section>
+    <p class="kicker">03 - The loop, in twenty seconds</p>
+    <h2>Watch one piece of feedback close</h2>
+    <div class="demo" id="demo" data-step="3">
+      <div class="demo-frame">
+        <div class="demo-bar">
+          <span class="winbtns"><i></i><i></i><i></i></span>
+          <span class="fname">launch-plan.md</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-doc">
+            <p class="dheading"><span class="hash">##</span>Rollout</p>
+            <p class="dtext">We will launch the partner beta <span class="anchor"><span class="old">in Q4 2026</span><span class="new">in H2 2026</span></span>, with mobile following in the new year. Pricing stays flat through the beta period.</p>
+          </div>
+          <div class="demo-thread">
+            <div class="note-card comment">
+              <p class="who you">you</p>
+              <p>We agreed H2, not Q4 - the partner beta cannot slip past summer.</p>
+            </div>
+            <div class="note-card reply">
+              <p class="who agent">agent</p>
+              <p>Changed to H2 2026. The mobile follow-up date assumed the Q4 start, so I flagged it below.</p>
+            </div>
+            <div class="resolved-chip">&#10003; resolved</div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-controls" id="demo-controls" hidden>
+        <span class="step-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <button class="btn btn-copy" type="button" id="demo-next">Next</button>
+        <button class="btn btn-ghost" type="button" id="demo-replay">Replay</button>
+      </div>
+      <p class="demo-caption" id="demo-caption">The whole exchange - comment, revision, reply, resolution - is saved inside the markdown file, invisible in any normal preview.</p>
+    </div>
+  </section>
+
 </main>
 <script>
   function wireCopy(btn){
@@ -160,6 +260,37 @@
     });
   }
   document.querySelectorAll('[data-copy-target]').forEach(wireCopy);
+
+  (function(){
+    var demo = document.getElementById('demo');
+    if(!demo) return;
+    var captions = [
+      'An agent wrote this launch plan. The timeline is wrong.',
+      'You select the text and leave an anchored comment.',
+      'The agent revises the doc and answers in the thread - as a suggested edit you can accept.',
+      'You resolve it. The whole exchange is saved inside the markdown file - invisible in any normal preview.'
+    ];
+    var caption = document.getElementById('demo-caption');
+    var controls = document.getElementById('demo-controls');
+    var next = document.getElementById('demo-next');
+    var replay = document.getElementById('demo-replay');
+    var dots = controls.querySelectorAll('.step-dots i');
+    var LAST = captions.length - 1;
+    function setStep(n){
+      demo.setAttribute('data-step', String(n));
+      caption.textContent = captions[n];
+      next.disabled = (n === LAST);
+      next.textContent = (n === LAST) ? 'Done' : 'Next';
+      dots.forEach(function(d, i){ d.classList.toggle('on', i <= n); });
+    }
+    next.addEventListener('click', function(){
+      var n = Number(demo.getAttribute('data-step'));
+      if(n < LAST) setStep(n + 1);
+    });
+    replay.addEventListener('click', function(){ setStep(0); });
+    controls.hidden = false;
+    setStep(0);
+  })();
 </script>
 </body>
 </html>
