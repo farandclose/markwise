@@ -920,9 +920,10 @@
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     if (replaceCompose || insertCompose) return; // the compose field owns its keys
+    if (document.querySelector('.mw-confirming')) return; // a discard confirm is modal: arrows must not move the hidden selection
     if (e.ctrlKey) return; // Ctrl combos (incl. macOS Ctrl+arrows Spaces switching) pass through
     var ae = document.activeElement;
-    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.tagName === 'BUTTON' || ae.isContentEditable)) return;
     var sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || typeof sel.modify !== 'function') return;
     if (!sel.focusNode || !docEl.contains(sel.focusNode)) return; // keyboard not engaged: scroll as ever
