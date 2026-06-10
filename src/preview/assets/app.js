@@ -910,6 +910,40 @@
     if (target) showPill(target);
   });
 
+  // ---- Keyboard ladder (Op2) ------------------------------------------------------------------
+  // Arrow-key navigation over Selection.modify (spike-verified in this read-only doc). Plain
+  // arrows move the caret; Shift extends the selection; Alt = word, Cmd+Left/Right = line
+  // boundary (the macOS ladder). Only active once a click (or prior arrow) has the selection in
+  // the prose - otherwise the keys are not intercepted and the page scrolls exactly as before.
+  // The existing gesture handlers read the resulting selection unchanged: Shift+Arrow + Delete =
+  // suggest-delete, Shift+Arrow + type = suggest-replace, moved caret + type = suggest-insert.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    if (replaceCompose || insertCompose) return; // the compose field owns its keys
+    if (e.ctrlKey) return; // Ctrl combos (incl. macOS Ctrl+arrows Spaces switching) pass through
+    var ae = document.activeElement;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || typeof sel.modify !== 'function') return;
+    if (!sel.focusNode || !docEl.contains(sel.focusNode)) return; // keyboard not engaged: scroll as ever
+
+    var horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+    var granularity;
+    if (e.metaKey) {
+      if (!horizontal) return; // Cmd+Up/Down: browser default (out of scope per spec)
+      granularity = 'lineboundary';
+    } else if (e.altKey) {
+      if (!horizontal) return; // Alt+Up/Down: not in the ladder
+      granularity = 'word';
+    } else {
+      granularity = horizontal ? 'character' : 'line';
+    }
+    var direction = (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? 'backward' : 'forward';
+    e.preventDefault();
+    sel.modify(e.shiftKey ? 'extend' : 'move', direction, granularity);
+    updateCaret(); // immediate; the selectionchange re-sync would lag a frame
+  });
+
   // Pressing Delete or Backspace on a non-collapsed selection proposes deleting that span. Ignored
   // while focus is in a textarea/input (so editing a draft or reply with Backspace is never
   // hijacked). A collapsed caret + Delete is a no-op in this slice (it is the future insert gesture).
