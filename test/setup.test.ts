@@ -1,6 +1,7 @@
 import { test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { buildSetupOutput } from '../src/setup.js';
 
 const setupPromptPath = fileURLToPath(new URL('../SETUP_PROMPT.md', import.meta.url));
 
@@ -20,4 +21,23 @@ test('SETUP_PROMPT.md ships in the npm package', () => {
   const pkgPath = fileURLToPath(new URL('../package.json', import.meta.url));
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
   expect(pkg.files).toContain('SETUP_PROMPT.md');
+});
+
+test('buildSetupOutput prepends the paste-able header and keeps the template verbatim', () => {
+  const out = buildSetupOutput({ template: 'TEMPLATE BODY' });
+  expect(out).toContain('To set up your coding agent, paste this into it:');
+  expect(out).toContain(
+    'Install Markwise for me with `npm i -g github:farandclose/markwise`, then run `markwise agent-setup` and follow what it prints.'
+  );
+  expect(out).toContain('TEMPLATE BODY');
+  // Header first, separator, then the template.
+  expect(out.indexOf('To set up')).toBeLessThan(out.indexOf('---'));
+  expect(out.indexOf('---')).toBeLessThan(out.indexOf('TEMPLATE BODY'));
+});
+
+test('buildSetupOutput over the real SETUP_PROMPT.md yields the full followable doc', () => {
+  const template = readFileSync(setupPromptPath, 'utf8');
+  const out = buildSetupOutput({ template });
+  expect(out).toContain('# Markwise agent setup');
+  expect(out).toContain('## Markwise');
 });
