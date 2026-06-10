@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markwise - the human-agent review layer for markdown</title>
+<meta name="description" content="Anchored comments, suggested edits, threads, and review state for agent-written markdown - all carried inside the file itself.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b27a16'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' font-weight='600' fill='%23faf7f0' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper:#faf7f0; --ink:#211c15; --soft:#6b6051; --line:#e4dccc;
+    --accent:#b27a16; --accent-soft:#f3e7cf; --card:#fffdf8; --strike:#b04a3a;
+    --good:#3f7d4e; --good-soft:#e6f0e3;
+    --serif:"Iowan Old Style","Charter","Palatino Linotype","Book Antiqua",Georgia,serif;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--serif); line-height:1.62;
+    padding:3.2rem 1.5rem 5rem;
+  }
+  .sheet{max-width:760px;margin:0 auto}
+  p{font-size:1.06rem}
+  a{color:var(--accent)}
+
+  .topline{display:flex;justify-content:space-between;align-items:baseline;
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:2.6rem}
+  .topline .meta{color:var(--soft)}
+
+  h1{font-size:clamp(2.1rem,6vw,3rem);line-height:1.08;margin:0 0 .7rem;font-weight:600;letter-spacing:-.018em}
+  .sub{color:var(--soft);font-size:1.14rem;margin:0 0 1.6rem;max-width:60ch}
+  .oneliner{margin:1.8rem 0 2rem;font-size:clamp(1.25rem,3.4vw,1.5rem);font-weight:600;
+    letter-spacing:-.015em;color:var(--ink)}
+  .oneliner .hi{background:linear-gradient(transparent 62%, var(--accent-soft) 62%)}
+
+  .kicker{font-family:var(--mono);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);margin:3.4rem 0 .2rem}
+  h2{font-size:1.45rem;margin:.1rem 0 .8rem;font-weight:600;letter-spacing:-.01em}
+
+  /* paste-to-agent CTA */
+  .paste{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:1rem 1.1rem;margin:0 0 .6rem}
+  .paste .cmd{font-family:var(--mono);font-size:.88rem;line-height:1.55;color:var(--ink);
+    word-break:break-word}
+  .paste .cmd code{color:var(--accent)}
+  .paste-row{display:flex;align-items:center;justify-content:space-between;gap:.8rem;
+    margin-top:.8rem;padding-top:.8rem;border-top:1px dashed var(--line)}
+  .paste-row .hint{font-size:.88rem;color:var(--soft);margin:0}
+  .btn{font-family:var(--mono);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
+    cursor:pointer;border-radius:8px;padding:.5rem .9rem;text-decoration:none;
+    display:inline-block;white-space:nowrap;transition:background .15s,border-color .15s}
+  .btn-copy{background:var(--accent);border:1px solid var(--accent);color:var(--paper)}
+  .btn-copy:hover{background:#9a6a12}
+  .btn-copy.ok{background:var(--good);border-color:var(--good)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  .cta-links{display:flex;gap:.6rem;align-items:center;margin:.9rem 0 0}
+
+  /* problem columns */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.2rem}
+  .col h3{margin:.1rem 0 .3rem;font-size:1.06rem}
+  .col .does{font-size:.92rem;color:var(--soft);margin:0 0 .7rem}
+  .col .fail{font-size:.96rem;margin:.2rem 0 0;padding-top:.7rem;border-top:1px dashed var(--line)}
+  .col .fail::before{content:"why it fails";display:block;font-family:var(--mono);
+    font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--strike);margin-bottom:.25rem}
+
+  /* reframe insight */
+  .insight{margin:2rem 0;padding:1.5rem 1.6rem;background:#fffdf6;
+    border:1px solid var(--accent-soft);border-radius:12px}
+  .insight .label{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:.5rem}
+  .insight .not{color:var(--strike);text-decoration:line-through;text-decoration-color:#d8a99f;
+    font-size:1.05rem;margin:0}
+  .insight .is{font-size:1.32rem;line-height:1.35;font-weight:600;margin:.4rem 0 0;letter-spacing:-.01em}
+  .insight .gloss{color:var(--soft);font-size:.98rem;margin:.7rem 0 0}
+
+  /* demo */
+  .demo-frame{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;box-shadow:0 1px 3px rgba(33,28,21,.05)}
+  .demo-bar{display:flex;align-items:center;gap:.7rem;padding:.55rem .9rem;
+    border-bottom:1px solid var(--line);background:#f6f1e6}
+  .demo-bar .winbtns{display:flex;gap:.32rem}
+  .demo-bar .winbtns i{width:.6rem;height:.6rem;border-radius:50%;background:var(--line);display:block}
+  .demo-bar .fname{font-family:var(--mono);font-size:.74rem;color:var(--soft);letter-spacing:.06em}
+  .demo-body{display:grid;grid-template-columns:1.45fr 1fr;gap:0}
+  .demo-doc{padding:1.3rem 1.4rem;border-right:1px solid var(--line)}
+  .demo-doc .dheading{font-weight:600;font-size:1.12rem;margin:0 0 .5rem}
+  .demo-doc .dheading .hash{font-family:var(--mono);font-size:.8rem;color:var(--line);
+    margin-right:.45rem;vertical-align:.08em}
+  .demo-doc .dtext{font-size:1rem;margin:0;line-height:1.7}
+  .demo-thread{padding:1.1rem 1rem;display:flex;flex-direction:column;gap:.6rem;
+    background:#fcfaf4;min-height:11rem}
+
+  .anchor .old,.anchor .new{border-radius:3px;padding:0 .12em;transition:background .3s,color .3s}
+  .anchor .new{display:none}
+  .note-card{background:var(--paper);border:1px solid var(--line);border-radius:9px;
+    padding:.6rem .75rem;font-size:.88rem;line-height:1.5;
+    opacity:0;transform:translateY(7px);visibility:hidden;
+    transition:opacity .3s ease,transform .3s ease,visibility .3s}
+  .note-card p{font-size:inherit;margin:0}
+  .note-card .who{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;
+    text-transform:uppercase;margin:0 0 .3rem}
+  .note-card .who.you{color:var(--accent)}
+  .note-card .who.agent{color:var(--good)}
+  .note-card.reply{margin-left:.8rem}
+  .resolved-chip{display:inline-flex;align-self:flex-start;align-items:center;gap:.4rem;
+    font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--good);background:var(--good-soft);border:1px solid #cadfc6;border-radius:999px;
+    padding:.28rem .7rem;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s}
+
+  /* demo states */
+  .demo[data-step="1"] .anchor .old{background:var(--accent-soft)}
+  .demo[data-step="1"] .note-card.comment,
+  .demo[data-step="2"] .note-card.comment,
+  .demo[data-step="2"] .note-card.reply{opacity:1;transform:none;visibility:visible}
+  .demo[data-step="2"] .anchor .old{background:#f7e7e3;color:var(--strike);
+    text-decoration:line-through;text-decoration-color:#cf8d80}
+  .demo[data-step="2"] .anchor .new,.demo[data-step="3"] .anchor .new{display:inline}
+  .demo[data-step="2"] .anchor .new{background:var(--good-soft);color:#27502f}
+  .demo[data-step="3"] .anchor .old{display:none}
+  .demo[data-step="3"] .note-card.comment,.demo[data-step="3"] .note-card.reply{
+    opacity:.45;transform:none;visibility:visible}
+  .demo[data-step="3"] .resolved-chip{opacity:1;visibility:visible}
+
+  .demo-controls{display:flex;align-items:center;gap:.9rem;margin:.9rem 0 0}
+  .step-dots{display:flex;gap:.4rem}
+  .step-dots i{width:.5rem;height:.5rem;border-radius:50%;background:var(--line);display:block;
+    transition:background .2s}
+  .step-dots i.on{background:var(--accent)}
+  .btn[disabled]{opacity:.4;cursor:default}
+  .btn[disabled]:hover{border-color:var(--line);color:var(--ink)}
+  .demo-caption{font-size:.95rem;color:var(--soft);margin:.6rem 0 0;min-height:2.6em}
+
+  /* contract */
+  .steps{list-style:none;counter-reset:step;margin:1.2rem 0;padding:0;
+    background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .steps li{counter-increment:step;display:flex;gap:.9rem;align-items:baseline;
+    padding:.85rem 1.2rem;font-size:1.02rem}
+  .steps li + li{border-top:1px dashed var(--line)}
+  .steps li::before{content:counter(step);font-family:var(--mono);font-size:.78rem;
+    color:var(--accent);border:1px solid var(--accent-soft);background:#fffdf6;
+    border-radius:50%;width:1.5rem;height:1.5rem;display:flex;align-items:center;
+    justify-content:center;flex-shrink:0;transform:translateY(.15em)}
+  .reqs{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+  .req{background:#fffdf6;border:1px solid var(--accent-soft);border-radius:10px;padding:1rem 1.2rem}
+  .req h3{margin:.1rem 0 .35rem;font-size:1.04rem}
+  .req h3::before{content:"requirement";display:block;font-family:var(--mono);font-size:.6rem;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem}
+  .req p{font-size:.95rem;color:var(--soft);margin:0}
+
+  /* toolkit */
+  .tools{margin:1.2rem 0;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .tool{display:grid;grid-template-columns:11.5rem 1fr;gap:1rem;padding:.8rem 1.2rem;align-items:baseline}
+  .tool + .tool{border-top:1px dashed var(--line)}
+  .tool .cmd{font-family:var(--mono);font-size:.84rem;color:var(--accent);white-space:nowrap}
+  .tool p{font-size:.97rem;margin:0}
+
+  /* why not */
+  .whynot{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+  .why{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem}
+  .why h3{margin:0 0 .25rem;font-size:1rem}
+  .why p{font-size:.93rem;color:var(--soft);margin:0}
+
+  footer{margin-top:4rem;padding-top:1.2rem;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;color:var(--soft);
+    display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  footer a{color:var(--soft)}
+
+  @media (prefers-reduced-motion:reduce){
+    .note-card,.resolved-chip,.anchor .old,.anchor .new,.step-dots i{transition:none}
+  }
+
+  @media(max-width:560px){
+    body{padding-top:2.2rem}
+    .paste-row{flex-direction:column;align-items:flex-start}
+    .cols{grid-template-columns:1fr}
+    .reqs{grid-template-columns:1fr}
+    .whynot{grid-template-columns:1fr}
+    .tool{grid-template-columns:1fr;gap:.15rem}
+    .demo-body{grid-template-columns:1fr}
+    .demo-doc{border-right:none;border-bottom:1px solid var(--line)}
+    .demo-thread{min-height:0}
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <div class="topline">
+    <span>Markwise</span>
+    <span class="meta">open source - MIT</span>
+  </div>
+
+  <header>
+    <h1>The review loop between you and your AI agent is broken.</h1>
+    <p class="sub">Agents hand you long, clean markdown - PRDs, specs, launch plans. Then your feedback has to make it back to the agent, and that handoff is where everything falls apart.</p>
+    <p class="oneliner">Markwise is the <span class="hi">human-agent review layer</span> for markdown.</p>
+
+    <div class="paste">
+      <p class="cmd" id="paste-cmd">Install Markwise for me with <code>npm i -g github:farandclose/markwise</code>, then run <code>markwise agent-setup</code> and follow what it prints.</p>
+      <div class="paste-row">
+        <p class="hint">Paste this into Claude Code, Codex, or any coding agent.</p>
+        <button class="btn btn-copy" type="button" data-copy-target="paste-cmd">copy</button>
+      </div>
+    </div>
+    <div class="cta-links">
+      <a class="btn btn-ghost" href="https://github.com/farandclose/markwise">View on GitHub</a>
+    </div>
+  </header>
+
+  <section>
+    <p class="kicker">01 - The problem</p>
+    <h2>The two things you can do today</h2>
+    <p>There are only two moves available, and each loses something the agent needs.</p>
+    <div class="cols">
+      <div class="col">
+        <h3>1. Reply in chat</h3>
+        <p class="does">You retype the feedback into the terminal: "in section 3, the timeline should be H2 not Q4..."</p>
+        <p class="fail">It loses the exact <b>location</b> and the <b>intent</b>. You describe a spot in prose instead of pointing at it. The longer the doc, the worse it gets.</p>
+      </div>
+      <div class="col">
+        <h3>2. Edit the markdown directly</h3>
+        <p class="does">You open the file and change the text yourself, or scribble inline notes.</p>
+        <p class="fail">The agent gets <b>no structured signal</b>: what changed, what is still open, what needs a response. A raw diff is not a review.</p>
+      </div>
+    </div>
+    <p>In Google Docs you comment and suggest edits <em>right on the text</em>, with threads and states. That fluency simply does not exist for the markdown an agent just wrote you.</p>
+  </section>
+
+  <section>
+    <p class="kicker">02 - The reframe</p>
+    <h2>This is not a markdown-comments problem</h2>
+    <div class="insight">
+      <p class="label">The core insight</p>
+      <p class="not">The problem is that markdown needs comments.</p>
+      <p class="is">Agent-written documents need a durable feedback loop that <em>both</em> humans <em>and</em> agents can understand.</p>
+      <p class="gloss">Markwise is not annotation syntax. It is a <b>workflow contract</b>: the human leaves anchored, structured feedback; the agent revises and answers every item; the human decides what is resolved; and the document carries the whole history without polluting a normal read.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">03 - The loop, in twenty seconds</p>
+    <h2>Watch one piece of feedback close</h2>
+    <div class="demo" id="demo" data-step="3">
+      <div class="demo-frame">
+        <div class="demo-bar">
+          <span class="winbtns"><i></i><i></i><i></i></span>
+          <span class="fname">launch-plan.md</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-doc">
+            <p class="dheading"><span class="hash">##</span>Rollout</p>
+            <p class="dtext">We will launch the partner beta <span class="anchor"><span class="old">in Q4 2026</span><span class="new">in H2 2026</span></span>, with mobile following in the new year. Pricing stays flat through the beta period.</p>
+          </div>
+          <div class="demo-thread">
+            <div class="note-card comment">
+              <p class="who you">you</p>
+              <p>We agreed H2, not Q4 - the partner beta cannot slip past summer.</p>
+            </div>
+            <div class="note-card reply">
+              <p class="who agent">agent</p>
+              <p>Changed to H2 2026. The mobile follow-up date assumed the Q4 start, so I flagged it below.</p>
+            </div>
+            <div class="resolved-chip">&#10003; resolved</div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-controls" id="demo-controls" hidden>
+        <span class="step-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <button class="btn btn-copy" type="button" id="demo-next">Next</button>
+        <button class="btn btn-ghost" type="button" id="demo-replay">Replay</button>
+      </div>
+      <p class="demo-caption" id="demo-caption">The whole exchange - comment, revision, reply, resolution - is saved inside the markdown file, invisible in any normal preview.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">04 - The contract</p>
+    <h2>The workflow contract</h2>
+    <ol class="steps">
+      <li>You leave anchored feedback - comments and suggested edits, right on the text.</li>
+      <li>The agent revises the document against every note.</li>
+      <li>The agent answers every item - what changed, what it pushed back on.</li>
+      <li>You decide what is resolved. Closure is the human's call.</li>
+      <li>The file carries the whole history - invisible in any normal markdown preview.</li>
+    </ol>
+    <div class="reqs">
+      <div class="req">
+        <h3>In-file truth</h3>
+        <p>The document and all its review state are one self-contained artifact. No sidecar files, no database, no platform. Portable, version-controllable, model-agnostic.</p>
+      </div>
+      <div class="req">
+        <h3>Clean preview</h3>
+        <p>All review data hides in HTML comments. GitHub, VS Code, and every normal markdown preview render the document clean.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">05 - The toolkit</p>
+    <h2>One CLI, one previewer</h2>
+    <div class="tools">
+      <div class="tool"><span class="cmd">markwise preview</span><p>Review in the browser: comment, reply, suggest edits, resolve. Three themes.</p></div>
+      <div class="tool"><span class="cmd">markwise prompt</span><p>Bundles the doc and every open note into an instruction block any model can act on.</p></div>
+      <div class="tool"><span class="cmd">markwise status</span><p>Whose turn is it? Open vs resolved, waiting on you vs waiting on the agent.</p></div>
+      <div class="tool"><span class="cmd">markwise lint</span><p>24 rules guard the review data; <code>--fix</code> repairs mechanical drift, never prose.</p></div>
+      <div class="tool"><span class="cmd">markwise export</span><p>A clean copy with every trace of review stripped. The original is never touched.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">06 - The alternatives</p>
+    <h2>Why not just...</h2>
+    <div class="whynot">
+      <div class="why"><h3>Google Docs / Notion</h3><p>Your doc leaves the repo and the agent loses it. Truth moves out of the file.</p></div>
+      <div class="why"><h3>PR review</h3><p>Feedback anchors to diffs and lives in the forge, not the artifact. Prose is not code.</p></div>
+      <div class="why"><h3>CriticMarkup</h3><p>Editorial syntax, not a review loop - and raw markup leaks into every preview.</p></div>
+      <div class="why"><h3>Chat</h3><p>"In section 3, the timeline..." - describing locations instead of pointing at them.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">07 - Get started</p>
+    <h2>Hand it to your agent</h2>
+    <div class="paste">
+      <p class="cmd" id="paste-cmd-2">Install Markwise for me with <code>npm i -g github:farandclose/markwise</code>, then run <code>markwise agent-setup</code> and follow what it prints.</p>
+      <div class="paste-row">
+        <p class="hint">Works with Claude Code, Codex, or any coding agent.</p>
+        <button class="btn btn-copy" type="button" data-copy-target="paste-cmd-2">copy</button>
+      </div>
+    </div>
+    <div class="cta-links">
+      <a class="btn btn-ghost" href="https://github.com/farandclose/markwise">View on GitHub</a>
+    </div>
+  </section>
+
+  <footer>
+    <span>Markwise - the human-agent review layer for markdown</span>
+    <span>MIT license &middot; <a href="https://github.com/farandclose/markwise">github</a></span>
+  </footer>
+
+</main>
+<script>
+  function wireCopy(btn){
+    btn.addEventListener('click', function(){
+      var src = document.getElementById(btn.getAttribute('data-copy-target'));
+      var text = src.textContent.replace(/\s+/g,' ').trim();
+      function ok(){
+        btn.classList.add('ok'); btn.textContent = 'copied';
+        setTimeout(function(){ btn.classList.remove('ok'); btn.textContent = 'copy'; }, 1500);
+      }
+      function fallback(){
+        var sel = window.getSelection(), range = document.createRange();
+        range.selectNodeContents(src); sel.removeAllRanges(); sel.addRange(range);
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(ok, fallback);
+      } else { fallback(); }
+    });
+  }
+  document.querySelectorAll('[data-copy-target]').forEach(wireCopy);
+
+  (function(){
+    var demo = document.getElementById('demo');
+    if(!demo) return;
+    var captions = [
+      'An agent wrote this launch plan. The timeline is wrong.',
+      'You select the text and leave an anchored comment.',
+      'The agent revises the doc and answers in the thread - as a suggested edit you can accept.',
+      'You resolve it. The whole exchange is saved inside the markdown file - invisible in any normal preview.'
+    ];
+    var caption = document.getElementById('demo-caption');
+    var controls = document.getElementById('demo-controls');
+    var next = document.getElementById('demo-next');
+    var replay = document.getElementById('demo-replay');
+    var dots = controls.querySelectorAll('.step-dots i');
+    var LAST = captions.length - 1;
+    function setStep(n){
+      demo.setAttribute('data-step', String(n));
+      caption.textContent = captions[n];
+      next.disabled = (n === LAST);
+      next.textContent = (n === LAST) ? 'Done' : 'Next';
+      dots.forEach(function(d, i){ d.classList.toggle('on', i <= n); });
+    }
+    next.addEventListener('click', function(){
+      var n = Number(demo.getAttribute('data-step'));
+      if(n < LAST) setStep(n + 1);
+    });
+    replay.addEventListener('click', function(){ setStep(0); });
+    controls.hidden = false;
+    setStep(0);
+  })();
+</script>
+</body>
+</html>

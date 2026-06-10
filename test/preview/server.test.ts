@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Server } from 'node:http';
+import { request, type Server } from 'node:http';
 import { createPreviewServer } from '../../src/preview/server.js';
 
 const DOC = `# Demo
@@ -35,10 +35,20 @@ async function start(doc: string): Promise<string> {
   return `http://127.0.0.1:${port}`;
 }
 
+/** The current document version, exactly as the browser learns it: from GET /api/doc. */
+async function docVersion(base: string): Promise<string> {
+  const payload = await (await fetch(`${base}/api/doc`)).json();
+  return payload.version as string;
+}
+
 async function post(base: string, path: string, body?: unknown): Promise<Response> {
+  const version = await docVersion(base);
   return fetch(`${base}${path}`, {
     method: 'POST',
-    headers: body === undefined ? {} : { 'content-type': 'application/json' },
+    headers: {
+      'x-mw-version': version,
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
@@ -330,5 +340,75 @@ describe('suggest-insert endpoints', () => {
     const onDisk = readFileSync(join(dir!, 'demo.md'), 'utf8');
     expect(onDisk).not.toContain('mw:n1');
     expect(onDisk).not.toContain('"text":"soon "');
+  });
+});
+
+describe('write protections (version precondition, host gate, content-type)', () => {
+  it('exposes the document version on /api/doc and changes it when the file changes', async () => {
+    const base = await start(DOC);
+    const v1 = await docVersion(base);
+    expect(v1).toMatch(/^[0-9a-f]{8}$/);
+    writeFileSync(join(dir!, 'demo.md'), '# Changed\n\nNo notes.\n', 'utf8');
+    const v2 = await docVersion(base);
+    expect(v2).not.toBe(v1);
+  });
+
+  it('rejects a mutation built against a stale version (409) and leaves the file untouched', async () => {
+    const base = await start(DOC);
+    const stale = await docVersion(base);
+    // The file changes after the page loaded (an agent revision, an editor save...).
+    const edited = DOC.replace('Ships by', 'Now ships by');
+    writeFileSync(join(dir!, 'demo.md'), edited, 'utf8');
+    const res = await fetch(`${base}/api/note/s1/resolve`, {
+      method: 'POST',
+      headers: { 'x-mw-version': stale },
+    });
+    expect(res.status).toBe(409);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(edited);
+  });
+
+  it('rejects a mutation with no version header (428) and leaves the file untouched', async () => {
+    const base = await start(DOC);
+    const before = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    const res = await fetch(`${base}/api/note/s1/resolve`, { method: 'POST' });
+    expect(res.status).toBe(428);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
+  });
+
+  it('accepts a mutation carrying the current version', async () => {
+    const base = await start(DOC);
+    const res = await post(base, '/api/note/s1/resolve');
+    expect(res.status).toBe(200);
+  });
+
+  it('refuses any request whose Host is not loopback (DNS rebinding, 403)', async () => {
+    // fetch/undici refuses to override Host, so speak raw node:http (which is also closer to what
+    // a rebinding attack actually sends: a normal request whose Host is the attacker's domain).
+    const base = await start(DOC);
+    const { port } = new URL(base);
+    const status = (method: string, path: string, host: string) =>
+      new Promise<number>((resolve, reject) => {
+        const req = request(
+          { host: '127.0.0.1', port, method, path, headers: { host, 'x-mw-version': 'whatever' } },
+          (res) => { res.resume(); resolve(res.statusCode ?? 0); }
+        );
+        req.on('error', reject);
+        req.end();
+      });
+    expect(await status('GET', '/api/doc', 'evil.example.com')).toBe(403);
+    expect(await status('POST', '/api/note/s1/resolve', 'evil.example.com:8080')).toBe(403);
+  });
+
+  it('rejects a non-JSON content type on a body-carrying POST (415, the no-cors CSRF shape)', async () => {
+    const base = await start(DOC);
+    const before = readFileSync(join(dir!, 'demo.md'), 'utf8');
+    // A hostile page can send this without preflight: text/plain body, no custom headers.
+    const res = await fetch(`${base}/api/note/s1/reply`, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain', 'x-mw-version': await docVersion(base) },
+      body: JSON.stringify({ body: 'injected' }),
+    });
+    expect(res.status).toBe(415);
+    expect(readFileSync(join(dir!, 'demo.md'), 'utf8')).toBe(before);
   });
 });

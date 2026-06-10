@@ -5,8 +5,17 @@ dist/
 
 # Transient session / harness artifacts (not project source)
 .superpowers/
-.claude/settings.json
+.claude/
 .playwright-mcp/
 
 # Local scratch doc for dogfooding the previewer (sample.md stays the clean reference)
 playground.md
+
+# Personal / scratch docs (not shared project source)
+learning/
+markwise-pm-onboarding.md
+markwise-user-prompts.md
+
+# Playwright run artifacts
+test-results/
+playwright-report/
