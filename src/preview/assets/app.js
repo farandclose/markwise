@@ -96,17 +96,19 @@
     c.classList.add('mw-caret-on');
   }
 
-  // One pending frame max: selectionchange fires in bursts (mouse drags, Selection.modify calls).
-  // This single re-sync point also covers clicks placing a caret, selections collapsing, Esc
-  // clearing the selection, and load() wiping the column.
-  document.addEventListener('selectionchange', function () {
+  // One pending frame max: selectionchange fires in bursts (mouse drags, Selection.modify calls)
+  // and resize fires continuously during a window drag. This single re-sync point also covers
+  // clicks placing a caret, selections collapsing, Esc clearing the selection, and load() wiping
+  // the column.
+  function scheduleCaret() {
     if (caretRaf) return;
     caretRaf = window.requestAnimationFrame(function () {
       caretRaf = 0;
       updateCaret();
     });
-  });
-  window.addEventListener('resize', updateCaret);
+  }
+  document.addEventListener('selectionchange', scheduleCaret);
+  window.addEventListener('resize', scheduleCaret);
 
   function idSel(id) {
     const safe = window.CSS && CSS.escape ? CSS.escape(id) : id;
