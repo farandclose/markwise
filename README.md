@@ -107,6 +107,19 @@ node dist/cli.js export <file> -o clean.md      # clean copy to a new file
 
 It **never modifies the original** - the clean copy goes to stdout or `--output`.
 
+## Set up your coding agent
+
+Markwise is built to be driven by a coding agent (Claude Code, Codex). To wire it in, paste
+this into your agent:
+
+> Install Markwise for me with `npm i -g github:farandclose/markwise`, then run
+> `markwise agent-setup` and follow what it prints.
+
+The command prints agent-directed instructions: it has the agent add a `## Markwise` section to
+its persistent instruction file (such as `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`) that
+teaches when to reach for Markwise and the preview -> act-on-feedback loop. The CLI never edits
+those files itself.
+
 ## Tests
 
 ```bash
