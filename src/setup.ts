@@ -3,6 +3,8 @@
 // follows). The CLI only PRINTS this - it never edits instruction files itself (spec: the agent
 // does the injection, RoughDraft-style). The GitHub install spec below is one of exactly two
 // occurrences in the codebase (the other is SETUP_PROMPT.md); an npm publish later edits both.
+// The header also hard-codes the `markwise agent-setup` command name, which must match the
+// dispatch in cli.ts.
 
 export interface SetupOutputInput {
   template: string; // SETUP_PROMPT.md content

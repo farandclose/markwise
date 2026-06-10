@@ -241,7 +241,11 @@ function promptCommand(args: Args): number {
   return 0;
 }
 
-function agentSetupCommand(): number {
+function agentSetupCommand(args: Args): number {
+  if (args.files.length > 0) {
+    process.stderr.write('markwise agent-setup: takes no arguments\n');
+    return 2;
+  }
   let template: string;
   try {
     template = readFileSync(new URL('../SETUP_PROMPT.md', import.meta.url), 'utf8');
@@ -349,7 +353,7 @@ function main(): void {
     process.exit(promptCommand(args));
   }
   if (args.command === 'agent-setup' || args.command === 'setup') {
-    process.exit(agentSetupCommand());
+    process.exit(agentSetupCommand(args));
   }
   if (args.command === 'export' || args.command === 'strip') {
     process.exit(exportCommand(args));

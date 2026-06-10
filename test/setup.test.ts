@@ -30,9 +30,10 @@ test('buildSetupOutput prepends the paste-able header and keeps the template ver
     'Install Markwise for me with `npm i -g github:farandclose/markwise`, then run `markwise agent-setup` and follow what it prints.'
   );
   expect(out).toContain('TEMPLATE BODY');
-  // Header first, separator, then the template.
-  expect(out.indexOf('To set up')).toBeLessThan(out.indexOf('---'));
-  expect(out.indexOf('---')).toBeLessThan(out.indexOf('TEMPLATE BODY'));
+  // Header first, then the exact separator, then the template.
+  expect(out).toContain('\n---\n\n');
+  expect(out.indexOf('To set up')).toBeLessThan(out.indexOf('\n---\n\n'));
+  expect(out.indexOf('\n---\n\n')).toBeLessThan(out.indexOf('TEMPLATE BODY'));
 });
 
 test('buildSetupOutput over the real SETUP_PROMPT.md yields the full followable doc', () => {
