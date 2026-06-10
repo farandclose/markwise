@@ -135,6 +135,41 @@
   .btn[disabled]:hover{border-color:var(--line);color:var(--ink)}
   .demo-caption{font-size:.95rem;color:var(--soft);margin:.6rem 0 0;min-height:2.6em}
 
+  /* contract */
+  .steps{list-style:none;counter-reset:step;margin:1.2rem 0;padding:0;
+    background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .steps li{counter-increment:step;display:flex;gap:.9rem;align-items:baseline;
+    padding:.85rem 1.2rem;font-size:1.02rem}
+  .steps li + li{border-top:1px dashed var(--line)}
+  .steps li::before{content:counter(step);font-family:var(--mono);font-size:.78rem;
+    color:var(--accent);border:1px solid var(--accent-soft);background:#fffdf6;
+    border-radius:50%;width:1.5rem;height:1.5rem;display:flex;align-items:center;
+    justify-content:center;flex-shrink:0;transform:translateY(.15em)}
+  .reqs{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+  .req{background:#fffdf6;border:1px solid var(--accent-soft);border-radius:10px;padding:1rem 1.2rem}
+  .req h3{margin:.1rem 0 .35rem;font-size:1.04rem}
+  .req h3::before{content:"requirement";display:block;font-family:var(--mono);font-size:.6rem;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem}
+  .req p{font-size:.95rem;color:var(--soft);margin:0}
+
+  /* toolkit */
+  .tools{margin:1.2rem 0;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .tool{display:grid;grid-template-columns:11.5rem 1fr;gap:1rem;padding:.8rem 1.2rem;align-items:baseline}
+  .tool + .tool{border-top:1px dashed var(--line)}
+  .tool .cmd{font-family:var(--mono);font-size:.84rem;color:var(--accent);white-space:nowrap}
+  .tool p{font-size:.97rem;margin:0}
+
+  /* why not */
+  .whynot{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}
+  .why{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.9rem 1.1rem}
+  .why h3{margin:0 0 .25rem;font-size:1rem}
+  .why p{font-size:.93rem;color:var(--soft);margin:0}
+
+  footer{margin-top:4rem;padding-top:1.2rem;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;color:var(--soft);
+    display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  footer a{color:var(--soft)}
+
   @media (prefers-reduced-motion:reduce){
     .note-card,.resolved-chip,.anchor .old,.anchor .new,.step-dots i{transition:none}
   }
@@ -143,6 +178,9 @@
     body{padding-top:2.2rem}
     .paste-row{flex-direction:column;align-items:flex-start}
     .cols{grid-template-columns:1fr}
+    .reqs{grid-template-columns:1fr}
+    .whynot{grid-template-columns:1fr}
+    .tool{grid-template-columns:1fr;gap:.15rem}
     .demo-body{grid-template-columns:1fr}
     .demo-doc{border-right:none;border-bottom:1px solid var(--line)}
     .demo-thread{min-height:0}
@@ -239,6 +277,71 @@
       <p class="demo-caption" id="demo-caption">The whole exchange - comment, revision, reply, resolution - is saved inside the markdown file, invisible in any normal preview.</p>
     </div>
   </section>
+
+  <section>
+    <p class="kicker">04 - The contract</p>
+    <h2>The workflow contract</h2>
+    <ol class="steps">
+      <li>You leave anchored feedback - comments and suggested edits, right on the text.</li>
+      <li>The agent revises the document against every note.</li>
+      <li>The agent answers every item - what changed, what it pushed back on.</li>
+      <li>You decide what is resolved. Closure is the human's call.</li>
+      <li>The file carries the whole history - invisible in any normal markdown preview.</li>
+    </ol>
+    <div class="reqs">
+      <div class="req">
+        <h3>In-file truth</h3>
+        <p>The document and all its review state are one self-contained artifact. No sidecar files, no database, no platform. Portable, version-controllable, model-agnostic.</p>
+      </div>
+      <div class="req">
+        <h3>Clean preview</h3>
+        <p>All review data hides in HTML comments. GitHub, VS Code, and every normal markdown preview render the document clean.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">05 - The toolkit</p>
+    <h2>One CLI, one previewer</h2>
+    <div class="tools">
+      <div class="tool"><span class="cmd">markwise preview</span><p>Review in the browser: comment, reply, suggest edits, resolve. Three themes.</p></div>
+      <div class="tool"><span class="cmd">markwise prompt</span><p>Bundles the doc and every open note into an instruction block any model can act on.</p></div>
+      <div class="tool"><span class="cmd">markwise status</span><p>Whose turn is it? Open vs resolved, waiting on you vs waiting on the agent.</p></div>
+      <div class="tool"><span class="cmd">markwise lint</span><p>24 rules guard the review data; <code>--fix</code> repairs mechanical drift, never prose.</p></div>
+      <div class="tool"><span class="cmd">markwise export</span><p>A clean copy with every trace of review stripped. The original is never touched.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">06 - The alternatives</p>
+    <h2>Why not just...</h2>
+    <div class="whynot">
+      <div class="why"><h3>Google Docs / Notion</h3><p>Your doc leaves the repo and the agent loses it. Truth moves out of the file.</p></div>
+      <div class="why"><h3>PR review</h3><p>Feedback anchors to diffs and lives in the forge, not the artifact. Prose is not code.</p></div>
+      <div class="why"><h3>CriticMarkup</h3><p>Editorial syntax, not a review loop - and raw markup leaks into every preview.</p></div>
+      <div class="why"><h3>Chat</h3><p>"In section 3, the timeline..." - describing locations instead of pointing at them.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="kicker">07 - Get started</p>
+    <h2>Hand it to your agent</h2>
+    <div class="paste">
+      <p class="cmd" id="paste-cmd-2">Install Markwise for me with <code>npm i -g github:farandclose/markwise</code>, then run <code>markwise agent-setup</code> and follow what it prints.</p>
+      <div class="paste-row">
+        <p class="hint">Works with Claude Code, Codex, or any coding agent.</p>
+        <button class="btn btn-copy" type="button" data-copy-target="paste-cmd-2">copy</button>
+      </div>
+    </div>
+    <div class="cta-links">
+      <a class="btn btn-ghost" href="https://github.com/farandclose/markwise">View on GitHub</a>
+    </div>
+  </section>
+
+  <footer>
+    <span>Markwise - the human-agent review layer for markdown</span>
+    <span>MIT license &middot; <a href="https://github.com/farandclose/markwise">github</a></span>
+  </footer>
 
 </main>
 <script>
