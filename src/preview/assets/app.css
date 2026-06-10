@@ -556,7 +556,7 @@ html, body {
 .mw-draft-actions button:hover { background: var(--mw-hover-tint); }
 .mw-draft-add { border-color: var(--mw-ink); }
 
-/* Discard (x) on a delete suggestion card, plus the card-scoped confirm overlay. */
+/* Discard (x) on any note card, plus the card-scoped confirm overlay. */
 .mw-card-discard {
   margin-left: auto;
   border: none;
