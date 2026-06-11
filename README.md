@@ -1,130 +1,143 @@
 # Markwise
 
-A human-agent review layer for markdown. A reviewer leaves anchored, structured **notes** on an
-agent-written markdown file; a fresh agent revises the doc and responds to every note. All review
-state lives **in the file itself**, as HTML comments that stay invisible in normal markdown
-previews.
+**Google-Docs-style review for the markdown your AI agent writes.**
 
-- The **protocol** is documented in `DECISIONS.md` (the decision log) and `CONTEXT.md` (the
-  glossary). `LINT_SPEC.md` is the full rule catalog the linter checks against.
-- The agent-facing instruction blocks are `AGENT_PROMPT.md` (revise + respond) and
-  `AUTHOR_PROMPT.md` (turn plain feedback into notes).
+Comment, reply, and suggest edits on an agent-written document in your browser. Every piece of
+feedback is saved inside the markdown file itself - where any coding agent can read it, act on
+it, and answer you, thread by thread.
 
-## Status
+![One review loop in Markwise: a comment, a suggested edit, an agent reply, a resolution](docs/demo.gif)
 
-| Surface | State |
-|---------|-------|
-| Protocol + schema | locked, dry-run validated |
-| `markwise lint` / `status` / `prompt` / `export` | **built** (this README) |
-| Web previewer | planned (read-only view first) |
+## The problem
 
-## Install / build
+Agents hand you long, clean markdown - PRDs, specs, launch plans, architecture docs. Then your
+feedback has to make it back to the agent, and that handoff is where everything falls apart.
 
-```bash
-pnpm install
-pnpm build      # compiles TypeScript to dist/
-```
+Today you have two moves, and each loses something the agent needs:
 
-## `markwise lint`
+- **Reply in chat.** *"In section 3, the timeline should be H2, not Q4..."* You describe
+  locations in prose instead of pointing at them. The longer the doc, the worse it gets - and
+  the feedback dies with the session.
+- **Edit the file yourself.** The agent gets no structured signal: what changed, what is still
+  open, what needs a response. A raw diff is not a review.
 
-Validate the Markwise records and anchors in a markdown file.
+In Google Docs you would comment and suggest edits right on the text, with threads and states.
+That fluency simply does not exist for the markdown an agent just wrote you.
 
-```bash
-node dist/cli.js lint <file...> [--fix] [--strict] [--json]
-```
+## The idea
 
-| Flag | Effect |
-|------|--------|
-| `--fix` | Repair **mechanical** anchor fields only (a stale `hash`, drifted `before`/`after` context). Never touches prose, dispositions, state, threads, or suggested-edit text. Always reports what it did, including when there is nothing to repair. |
-| `--strict` | Treat warnings as failures (non-zero exit). |
-| `--json` | Emit findings as JSON instead of text. |
+The problem is not that markdown needs comments. The problem is that **agent-written documents
+need a durable feedback loop that both humans and agents can understand.**
 
-### Severity and exit codes
+So Markwise is not annotation syntax. It is a workflow contract:
 
-Severity tracks **consequence**, not which check produced it:
+1. **You leave anchored feedback** - comments and suggested insert/replace/delete edits, right
+   on the text, in a browser preview.
+2. **The agent revises the document** against every note, and **answers every item** - what
+   changed, what it pushed back on.
+3. **You decide what is resolved.** Closure is always the human's call. An agent never resolves
+   a note.
 
-- **error** - the file is unparseable, the review state is corrupted, or raw markup would leak into
-  a normal markdown preview. The doc is broken or looks broken.
-- **warning** - the file is valid and renders clean, but something is degraded or almost certainly a
-  mistake (a stale hash, a declined note with no reply).
+Three properties make the loop durable:
 
-| Exit code | Meaning |
-|-----------|---------|
-| `0` | clean, or only warnings (without `--strict`) |
-| `1` | one or more errors (or any warning with `--strict`) |
-| `2` | usage error / file not found |
+- **In-file truth.** The document and all its review state are one self-contained artifact -
+  no sidecar files, no database, no platform. It commits, diffs, and travels like any other
+  markdown file.
+- **Clean preview.** All review data hides in HTML comments. GitHub, VS Code, and every normal
+  markdown renderer show the document clean.
+- **Any agent.** Feedback has IDs, anchors, states, and instructions. `markwise prompt` bundles
+  the document and every open note into a block you can hand to Claude Code, Codex, or any
+  model. No lock-in.
 
-### Example
+## Why not just...
 
-```
-$ node dist/cli.js lint sample.md
-sample.md: clean
+- **Google Docs / Notion** - your doc leaves the repo and the agent loses it. Truth moves out
+  of the file.
+- **PR review** - feedback anchors to diffs and lives in the forge, not the artifact. Prose is
+  not code.
+- **CriticMarkup** - useful prior art, but it is editorial syntax, not a review loop: no
+  threads, no states, no agent replies - and raw markup leaks into every preview.
+- **Chat** - "in section 3, the timeline..." - describing locations instead of pointing at
+  them, in a transcript that scrolls away.
 
-0 errors, 0 warnings
-```
+## Quick start
 
-The full list of checks (24 rules across structural integrity, anchor health, and lifecycle
-consistency) is in `LINT_SPEC.md`. Each rule has a stable id (`L101`-`L304`) referenced in output.
-
-## `markwise status`
-
-A human-facing summary of where a review stands. It counts open vs resolved notes and, using the
-"who spoke last" rule, tells you whose turn each open note is on.
-
-```bash
-node dist/cli.js status <file...> [--json]
-```
-
-- **Waiting on you** - the agent has responded; you resolve or push back. (Notes where the agent
-  asked a question are also flagged as needing your answer.)
-- **Waiting on the agent** - a brand-new note, or you replied on top of the agent's last action.
-
-`status` is informational and always exits `0`.
-
-## `markwise prompt`
-
-Emits the model-agnostic instruction block for an agent (with the current timestamp filled in),
-the list of notes currently waiting on the agent, then the document - a single bundle you can hand
-to any model.
-
-```bash
-node dist/cli.js prompt <file> [--author]
-```
-
-- default: the revise-and-respond block (`AGENT_PROMPT.md`).
-- `--author`: the note-authoring block (`AUTHOR_PROMPT.md`), for turning plain feedback into notes.
-
-## `markwise export` (alias `strip`)
-
-Produces a clean, shareable copy with all Markwise data removed (the blocks and every inline marker;
-the wrapped prose stays). Because `mw:` comments are invisible in normal preview, this is the safe
-way to share a file without leaking hidden review feedback.
-
-```bash
-node dist/cli.js export <file>                 # clean copy to stdout
-node dist/cli.js export <file> -o clean.md      # clean copy to a new file
-```
-
-It **never modifies the original** - the clean copy goes to stdout or `--output`.
-
-## Set up your coding agent
-
-Markwise is built to be driven by a coding agent (Claude Code, Codex). To wire it in, paste
-this into your agent:
+Paste this into Claude Code, Codex, or any coding agent:
 
 > Install Markwise for me with `npm i -g github:farandclose/markwise`, then run
 > `markwise agent-setup` and follow what it prints.
 
-The command prints agent-directed instructions: it has the agent add a `## Markwise` section to
-its persistent instruction file (such as `~/.claude/CLAUDE.md` or `~/.codex/AGENTS.md`) that
-teaches when to reach for Markwise and the preview -> act-on-feedback loop. The CLI never edits
-those files itself.
-
-## Tests
+That teaches your agent when to reach for Markwise and how to run the review loop. Or install
+it yourself:
 
 ```bash
-pnpm test
+npm i -g github:farandclose/markwise
+markwise preview your-doc.md     # opens a localhost previewer
 ```
 
-The suite is fixture-driven: one broken-file fixture per rule, a frozen clean reference document, a
-realistically-messy multi-error document, and `--fix` round-trip checks.
+Requires Node 20+.
+
+## One review loop, end to end
+
+1. Your agent writes `launch-plan.md` and opens it for you: `markwise preview launch-plan.md`.
+2. In the browser, you select a sentence and leave a comment. You select a date and type a
+   correction - it becomes a suggested replacement, shown inline. Everything you do is saved
+   into the file as you go.
+3. Your agent runs `markwise prompt launch-plan.md`, which emits the instruction block, every
+   note waiting on the agent, and the document. The agent revises the doc and replies in each
+   thread.
+4. `markwise status launch-plan.md` tells you it is your turn. Back in the previewer, you read
+   the agent's replies, push back where it missed, and resolve what is done.
+5. Need a clean copy for someone outside the loop? `markwise export` writes one with every
+   trace of review stripped - the original is never touched.
+
+## How it works
+
+Review state lives in HTML comments, invisible in any rendered view:
+
+```markdown
+We launch the partner beta in <!-- mw: n1 -->Q4 2026<!-- /mw: n1 -->, with
+mobile following in the new year.
+
+<!-- mw:log v=1
+{"id":"n1","type":"comment","state":"open", ... ,"thread":[
+  {"by":"reviewer","at":"...","body":"We agreed H2, not Q4."}]}
+-->
+```
+
+Inline markers pin each note to the exact text it is about; a single log block at the bottom of
+the file holds the threads and state. Anchors carry a content hash plus surrounding context, so
+notes survive the agent rewriting the document around them - and `markwise lint --fix` repairs
+mechanical drift (never prose). When you want the review data gone, `markwise export` produces
+a clean copy.
+
+## The toolkit
+
+| Command | What it does |
+|---------|--------------|
+| `markwise preview <file>` | Review in the browser: comment, reply, suggest edits, resolve. Three themes. |
+| `markwise prompt <file>` | Bundle the doc and every open note into an instruction block for any model. |
+| `markwise status <file>` | Whose turn is it? Open vs resolved, waiting on you vs waiting on the agent. |
+| `markwise lint <file>` | 24 rules guard the review data; `--fix` repairs mechanical drift, never prose. |
+| `markwise export <file>` | A clean copy with every trace of review stripped. Never modifies the original. |
+| `markwise agent-setup` | Print the instructions that wire Markwise into your coding agent. |
+
+Full flags, exit codes, and behavior: [docs/commands.md](docs/commands.md).
+
+## Status and limitations
+
+Markwise is young and moving fast. What works today: the full protocol (lint, status, prompt,
+export), and a previewer with comments, threaded replies, resolve/discard, suggested
+insert/replace/delete edits, keyboard selection, and three themes - backed by 160+ unit tests
+and a browser e2e suite.
+
+Honest limitations:
+
+- The previewer serves **one file per process**, on localhost, for a single reviewer. It is a
+  review surface, not a collaboration server.
+- The protocol is **v1 and may still evolve**; `markwise lint` is the compatibility guarantee.
+- Suggested edits cover prose spans; they do not yet restructure tables or move whole sections.
+
+## License
+
+[MIT](LICENSE)
