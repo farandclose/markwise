@@ -7,6 +7,7 @@ dist/
 .superpowers/
 .claude/
 .playwright-mcp/
+.impeccable/
 
 # Local scratch doc for dogfooding the previewer (sample.md stays the clean reference)
 playground.md
