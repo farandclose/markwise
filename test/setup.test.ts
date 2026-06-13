@@ -9,7 +9,7 @@ test('SETUP_PROMPT.md carries the canonical block and the install spec', () => {
   const t = readFileSync(setupPromptPath, 'utf8');
   expect(t).toContain('# Markwise agent setup');
   expect(t).toContain('## Markwise'); // the canonical injected block heading
-  expect(t).toContain('npm i -g github:farandclose/markwise'); // the single install spec (spec section 4)
+  expect(t).toContain('npm i -g markwise'); // the single install spec (spec section 4)
   expect(t).toContain('markwise preview <file>');
   expect(t).toContain('markwise prompt <file>');
   expect(t).toContain('never resolve notes yourself');
@@ -27,7 +27,7 @@ test('buildSetupOutput prepends the paste-able header and keeps the template ver
   const out = buildSetupOutput({ template: 'TEMPLATE BODY' });
   expect(out).toContain('To set up your coding agent, paste this into it:');
   expect(out).toContain(
-    'Install Markwise for me with `npm i -g github:farandclose/markwise`, then run `markwise agent-setup` and follow what it prints.'
+    'Install Markwise for me with `npm i -g markwise`, then run `markwise agent-setup` and follow what it prints.'
   );
   expect(out).toContain('TEMPLATE BODY');
   // Header first, then the exact separator, then the template.

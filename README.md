@@ -64,18 +64,18 @@ Three properties make the loop durable:
 
 Paste this into Claude Code, Codex, or any coding agent:
 
-> Install Markwise for me with `npm i -g github:farandclose/markwise`, then run
+> Install Markwise for me with `npm i -g markwise`, then run
 > `markwise agent-setup` and follow what it prints.
 
 That teaches your agent when to reach for Markwise and how to run the review loop. Or install
 it yourself:
 
 ```bash
-npm i -g github:farandclose/markwise
+npm i -g markwise
 markwise preview your-doc.md     # opens a localhost previewer
 ```
 
-Requires Node 20+.
+Requires Node 20+. Contributors: build from source with `pnpm install && pnpm run build`.
 
 ## One review loop, end to end
 
