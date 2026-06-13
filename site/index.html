@@ -153,20 +153,6 @@
   @keyframes sceneL4{0%,62%{opacity:0}66%,93%{opacity:1}98%,100%{opacity:0}}
   @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
 
-  /* below-the-fold reveal: the real previewer, peeking up to pull the scroll */
-  .reveal{padding:0 0 clamp(3rem,7vh,5rem)}
-  .reveal-frame{max-width:1040px;margin:0 auto;border:1px solid var(--hairline);
-    border-radius:16px;overflow:hidden;background:var(--stage-2);
-    box-shadow:0 2px 6px rgba(20,22,26,.04),0 44px 90px rgba(20,22,26,.17)}
-  .reveal-bar{display:flex;align-items:center;gap:.7rem;padding:.62rem 1rem;
-    background:var(--stage-3);border-bottom:1px solid var(--hairline-soft)}
-  .reveal-frame img{display:block;width:100%;height:auto}
-  .reveal-cap{max-width:1040px;margin:.95rem auto 0;font-size:.92rem;color:var(--dim);text-align:center}
-  @media (prefers-reduced-motion:no-preference){
-    html.js .reveal-frame{animation:revealUp .85s cubic-bezier(.16,1,.3,1) both}
-  }
-  @keyframes revealUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
-
   /* section scaffolding */
   section{padding:clamp(3.4rem,8vh,6rem) 0}
   h2{font-family:var(--display);font-weight:700;font-size:clamp(1.7rem,3vw,2.35rem);
@@ -204,25 +190,44 @@
   .how--live .how-step{opacity:.3}
   .how--live .how-step.active{opacity:1}
 
-  /* the pinned, transforming document - it never moves, only its state changes */
+  /* the pinned stage: one box, same real estate, that transforms terminal -> document */
   .how-stage{position:sticky;top:14vh}
-  .how-win{background:var(--paper);color:var(--paper-ink);border-radius:14px;overflow:hidden;
-    border:1px solid #2c3038;box-shadow:0 40px 90px rgba(0,0,0,.5)}
-  .hw-bar{display:flex;align-items:center;gap:.7rem;padding:.6rem .95rem;
+  .how-win{position:relative;border-radius:14px;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.5)}
+  .hw-doc,.hw-term{transition:opacity .45s ease}
+  /* document face is in flow and defines the height; terminal face overlays it exactly */
+  .hw-doc{position:relative;background:var(--paper);color:var(--paper-ink);
+    font-family:var(--serif);display:flex;flex-direction:column}
+  .hw-term{position:absolute;inset:0;background:var(--term);border:1px solid #2c3038;
+    border-radius:14px;opacity:0;pointer-events:none}
+  .how-win[data-step="0"] .hw-term{opacity:1}
+  .how-win[data-step="0"] .hw-doc{opacity:0}
+
+  /* terminal face: the agent wrote the file */
+  .hw-tbar{display:flex;align-items:center;gap:.7rem;padding:.6rem .95rem;
+    border-bottom:1px solid rgba(255,255,255,.08)}
+  .hw-tbar .winbtns i{background:rgba(255,255,255,.2)}
+  .hw-tapp{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;color:var(--term-dim)}
+  .hw-tbody{padding:1.1rem 1.2rem;font-family:var(--mono);font-size:.82rem;line-height:1.7;color:var(--term-ink)}
+  .hwt{margin:0 0 .55rem;display:flex;align-items:baseline;gap:.55rem}
+  .hwt i{width:.5em;height:.5em;border-radius:50%;background:var(--green);flex-shrink:0;transform:translateY(-.1em)}
+  .hwt b{font-weight:500;color:var(--gold)}
+  .hw-tcur{display:inline-block;width:.5em;height:1.05em;background:var(--term-ink);
+    vertical-align:-.18em;animation:blink 1.1s steps(1) infinite}
+
+  /* document face header: markwise + file + hand-off CTA */
+  .hw-bar{display:flex;align-items:center;gap:.55rem;padding:.5rem .8rem .5rem .95rem;
     background:var(--stage-3);border-bottom:1px solid var(--hairline-soft)}
-  .hw-app{font-family:var(--mono);font-size:.72rem;color:var(--dim);letter-spacing:.04em}
-  .hw-app::before{content:"markwise preview"}
-  .how-win[data-step="0"] .hw-app::before{content:"claude code"}
-  .hw-file{font-family:var(--mono);font-size:.72rem;color:var(--paper-line-2);
-    margin-left:auto;letter-spacing:.04em}
-  .hw-body{padding:1.4rem 1.5rem;font-family:var(--serif);min-height:19rem;
-    display:flex;flex-direction:column}
-  .hw-h{font-weight:700;font-size:1.12rem;margin:0 0 .6rem;color:var(--paper-ink)}
-  .hw-h .hash{font-family:var(--mono);font-size:.78rem;color:var(--paper-line-2);margin-right:.4rem}
-  .hw-p{font-size:1.02rem;line-height:1.75;margin:0}
-  .hw-caret{display:none;width:.55em;height:1.05em;background:var(--paper-ink);
-    margin-left:.1em;vertical-align:-.18em;animation:blink 1.1s steps(1) infinite}
-  .how-win[data-step="0"] .hw-caret{display:inline-block}
+  .hw-brand{font-family:var(--display);font-weight:800;font-size:.84rem;color:var(--ink);letter-spacing:-.01em}
+  .hw-brand i{font-style:normal;color:var(--gold-deep)}
+  .hw-file{font-family:var(--mono);font-size:.7rem;color:var(--paper-line-2);letter-spacing:.03em}
+  .hw-handoff{margin-left:auto;font-family:var(--sans);font-size:.68rem;font-weight:600;
+    color:var(--dim);background:transparent;border:1px solid var(--hairline);border-radius:7px;
+    padding:.3rem .6rem;cursor:default;white-space:nowrap}
+
+  .hw-body{position:relative;padding:1.3rem 1.45rem;min-height:17.5rem;display:flex;flex-direction:column}
+  .hw-h{font-weight:700;font-size:1.1rem;margin:0 0 .55rem;color:var(--paper-ink)}
+  .hw-h .hash{font-family:var(--mono);font-size:.76rem;color:var(--paper-line-2);margin-right:.4rem}
+  .hw-p{font-size:1rem;line-height:1.75;margin:0}
   .hw-anchor .o,.hw-anchor .n{border-radius:3px;padding:0 .1em;transition:background .35s,color .35s}
   .hw-anchor .n{display:none}
   .how-win[data-step="2"] .hw-anchor .o{background:var(--mark)}
@@ -232,26 +237,55 @@
   .how-win[data-step="3"] .hw-anchor .n{background:#e6f0e3;color:var(--green-ink)}
   .how-win[data-step="4"] .hw-anchor .o{display:none}
 
-  .hw-thread{margin-top:1.1rem;display:flex;flex-direction:column;gap:.55rem}
+  /* comment bubble: pops up before the note is written */
+  .hw-bubble{position:absolute;top:2rem;right:1.2rem;display:inline-flex;align-items:center;gap:.35rem;
+    background:#fff;border:1px solid var(--hairline);border-radius:9px;padding:.32rem .5rem;
+    font-family:var(--sans);font-size:.68rem;font-weight:600;color:var(--dim);
+    box-shadow:0 8px 22px rgba(20,22,26,.16);
+    opacity:0;transform:translateY(-4px) scale(.92);transform-origin:top right;
+    transition:opacity .3s ease,transform .3s ease;pointer-events:none}
+  .hw-bubble svg{width:.9rem;height:.9rem;color:var(--gold-deep)}
+  .hw-bubble::after{content:"";position:absolute;left:1.3rem;bottom:-5px;width:9px;height:9px;
+    background:#fff;border-right:1px solid var(--hairline);border-bottom:1px solid var(--hairline);
+    transform:rotate(45deg)}
+  .how-win[data-step="2"] .hw-bubble{opacity:1;transform:none;transition-delay:.15s}
+
+  .hw-thread{margin-top:1.05rem;display:flex;flex-direction:column;gap:.5rem}
   .hw-card{background:var(--stage-3);border:1px solid var(--hairline);border-radius:10px;
-    padding:.6rem .8rem;font-family:var(--sans);font-size:.88rem;line-height:1.5;
+    padding:.55rem .75rem;font-family:var(--sans);font-size:.85rem;line-height:1.5;
     opacity:0;transform:translateY(8px);visibility:hidden;
     transition:opacity .35s ease,transform .35s ease,visibility .35s}
   .hw-card p{margin:0}
-  .hw-card .who{font-family:var(--mono);font-size:.6rem;letter-spacing:.13em;display:block;margin:0 0 .25rem}
+  .hw-card .who{font-family:var(--mono);font-size:.58rem;letter-spacing:.13em;display:block;margin:0 0 .22rem}
   .hw-card.you .who{color:var(--gold-deep)}
   .hw-card.agent .who{color:var(--green-deep)}
   .hw-card.agent{margin-left:1rem}
-  .hw-resolved{align-self:flex-start;display:inline-flex;align-items:center;gap:.4rem;
-    font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;color:var(--green-deep);
-    background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.35);border-radius:999px;
-    padding:.3rem .7rem;opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
-  .how-win[data-step="2"] .hw-card.you,
-  .how-win[data-step="3"] .hw-card.you,.how-win[data-step="3"] .hw-card.agent,
-  .how-win[data-step="4"] .hw-card.you,.how-win[data-step="4"] .hw-card.agent{
+  /* step 2: comment appears (after the bubble) */
+  .how-win[data-step="2"] .hw-card.you{opacity:1;transform:none;visibility:visible;transition-delay:.5s}
+  /* steps 3-4: comment stays; at step 3 the edit lands first, then the agent reply */
+  .how-win[data-step="3"] .hw-card.you,.how-win[data-step="4"] .hw-card.you,
+  .how-win[data-step="3"] .hw-card.agent,.how-win[data-step="4"] .hw-card.agent{
     opacity:1;transform:none;visibility:visible}
-  .how-win[data-step="4"] .hw-card{opacity:.5}
+  .how-win[data-step="3"] .hw-card.agent{transition-delay:.5s}
+
+  /* resolve: action sits under the thread, then a pretend click closes it */
+  .hw-act{position:relative;min-height:2.1rem;margin-top:.35rem}
+  .hw-resolve,.hw-resolved{position:absolute;top:0;left:0}
+  .hw-resolve{font-family:var(--sans);font-size:.74rem;font-weight:600;color:#fff;
+    background:var(--green-deep);border:1px solid var(--green-deep);border-radius:8px;
+    padding:.34rem .8rem;cursor:default;opacity:0;visibility:hidden;
+    transition:opacity .3s ease,visibility .3s,transform .12s ease}
+  .hw-resolve.is-clicking{transform:scale(.93)}
+  .hw-resolved{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--mono);
+    font-size:.64rem;letter-spacing:.1em;color:var(--green-deep);background:rgba(63,125,78,.08);
+    border:1px solid rgba(63,125,78,.35);border-radius:999px;padding:.3rem .7rem;
+    opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
   .how-win[data-step="4"] .hw-resolved{opacity:1;visibility:visible}
+  .how-win[data-step="4"] .hw-card{opacity:.5}
+  /* live override: hold the button until the pretend click fires */
+  .how-win.pre-resolve .hw-resolved{opacity:0;visibility:hidden}
+  .how-win.pre-resolve .hw-resolve{opacity:1;visibility:visible}
+  .how-win.pre-resolve .hw-card{opacity:1}
 
   /* real thing */
   .real{border-top:1px solid var(--hairline-soft)}
@@ -315,6 +349,7 @@
     .tool{grid-template-columns:1fr;gap:.15rem}
     .bar .btn-ghost{display:none}
     .hw-body{min-height:0}
+    .hw-file{display:none}
   }
 </style>
 </head>
@@ -376,20 +411,6 @@
     </div>
   </div>
 
-  <div class="reveal">
-    <div class="shell">
-      <div class="reveal-frame">
-        <div class="reveal-bar">
-          <span class="winbtns"><i></i><i></i><i></i></span>
-          <span class="fname">markwise preview &middot; launch-plan.md</span>
-        </div>
-        <img src="assets/previewer-light.png" width="1200" height="800" loading="lazy"
-          alt="The Markwise previewer on an agent-written brief: inline suggested edits anchored to the text, with a rail of open notes and a Hand to agent button.">
-      </div>
-      <p class="reveal-cap">The previewer on a real brief: inline suggested edits, anchored notes, one click to hand every note back to your agent.</p>
-    </div>
-  </div>
-
   <section class="how" id="how">
     <div class="shell">
       <div class="how-head">
@@ -436,18 +457,36 @@
         </ol>
         <div class="how-stage" aria-hidden="true">
           <div class="how-win" data-step="4">
-            <div class="hw-bar">
-              <span class="winbtns"><i></i><i></i><i></i></span>
-              <span class="hw-app"></span>
-              <span class="hw-file">launch-plan.md</span>
+            <!-- document face: in flow, defines the box -->
+            <div class="hw-doc">
+              <div class="hw-bar">
+                <span class="hw-brand">mark<i>wise</i></span>
+                <span class="hw-file">launch-plan.md</span>
+                <button class="hw-handoff" type="button" tabindex="-1">Hand off to the agent</button>
+              </div>
+              <div class="hw-body">
+                <p class="hw-h"><span class="hash">##</span>Rollout</p>
+                <p class="hw-p">We will launch the partner beta <span class="hw-anchor"><span class="o">in Q4 2026</span><span class="n">in H2 2026</span></span>, with mobile following in the new year.</p>
+                <div class="hw-bubble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Comment</div>
+                <div class="hw-thread">
+                  <div class="hw-card you"><span class="who">YOU</span><p>We agreed H2, not Q4 - the partner beta cannot slip past summer.</p></div>
+                  <div class="hw-card agent"><span class="who">AGENT</span><p>Changed to H2 2026, and flagged the mobile date that assumed a Q4 start.</p></div>
+                  <div class="hw-act">
+                    <button class="hw-resolve" type="button" tabindex="-1">Resolve</button>
+                    <span class="hw-resolved">&#10003; RESOLVED &middot; saved in launch-plan.md</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="hw-body">
-              <p class="hw-h"><span class="hash">##</span>Rollout</p>
-              <p class="hw-p">We will launch the partner beta <span class="hw-anchor"><span class="o">in Q4 2026</span><span class="n">in H2 2026</span></span>, with mobile following in the new year.<span class="hw-caret"></span></p>
-              <div class="hw-thread">
-                <div class="hw-card you"><span class="who">YOU</span><p>We agreed H2, not Q4 - the partner beta cannot slip past summer.</p></div>
-                <div class="hw-card agent"><span class="who">AGENT</span><p>Changed to H2 2026, and flagged the mobile date that assumed a Q4 start.</p></div>
-                <span class="hw-resolved">&#10003; RESOLVED &middot; saved in launch-plan.md</span>
+            <!-- terminal face: overlays the box at step 1 -->
+            <div class="hw-term">
+              <div class="hw-tbar">
+                <span class="winbtns"><i></i><i></i><i></i></span>
+                <span class="hw-tapp">Claude Code</span>
+              </div>
+              <div class="hw-tbody">
+                <p class="hwt"><i></i>Wrote <b>launch-plan.md</b> (412 lines)</p>
+                <p class="hwt"><i></i>Your doc is ready for review.<span class="hw-tcur"></span></p>
               </div>
             </div>
           </div>
@@ -565,9 +604,29 @@
     var win = document.querySelector('.how-win');
     if(!how || !win) return;
     var steps = Array.prototype.slice.call(document.querySelectorAll('.how-step'));
+    var resolveBtn = win.querySelector('.hw-resolve');
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var wide = window.matchMedia('(min-width: 881px)').matches;
     var live = !reduced && wide && 'IntersectionObserver' in window;
+
+    // resolve micro-interaction: show the button, pretend-click it, then the chip appears
+    var rt1, rt2, resolveStarted = false;
+    function resetResolve(){
+      resolveStarted = false;
+      win.classList.remove('pre-resolve');
+      if(resolveBtn) resolveBtn.classList.remove('is-clicking');
+      clearTimeout(rt1); clearTimeout(rt2);
+    }
+    function runResolve(){
+      if(resolveStarted) return;
+      resolveStarted = true;
+      win.classList.add('pre-resolve');                 // hold on the Resolve button
+      rt1 = setTimeout(function(){ if(resolveBtn) resolveBtn.classList.add('is-clicking'); }, 1000);
+      rt2 = setTimeout(function(){
+        if(resolveBtn) resolveBtn.classList.remove('is-clicking');
+        win.classList.remove('pre-resolve');            // reveal the resolved resting state
+      }, 1380);
+    }
 
     if(live){
       how.classList.add('how--live');
@@ -579,6 +638,7 @@
             var n = e.target.getAttribute('data-step');
             win.setAttribute('data-step', n);
             steps.forEach(function(s){ s.classList.toggle('active', s === e.target); });
+            if(n === '4'){ runResolve(); } else { resetResolve(); }
           }
         });
       }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
