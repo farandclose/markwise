@@ -37,6 +37,8 @@
     --serif:"Literata",Georgia,serif;
     --sans:"Schibsted Grotesk",system-ui,-apple-system,sans-serif;
     --mono:"Spline Sans Mono",ui-monospace,Menlo,Consolas,monospace;
+    /* motion */
+    --ease-q:cubic-bezier(.25,1,.5,1); --ease-quint:cubic-bezier(.22,1,.36,1);
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
@@ -75,8 +77,32 @@
   .hero-in{display:grid;grid-template-columns:1.04fr 1fr;gap:clamp(2rem,5vw,4rem);align-items:center}
   h1{font-family:var(--display);font-weight:800;font-size:clamp(2.45rem,5vw,3.75rem);
     line-height:1.03;letter-spacing:-.035em;margin:0 0 1.25rem;color:var(--ink)}
-  h1 .hl{background:var(--mark);padding:.02em .14em;border-radius:4px;
-    box-decoration-break:clone;-webkit-box-decoration-break:clone}
+  h1 .hl{background-image:linear-gradient(var(--mark),var(--mark));background-repeat:no-repeat;
+    background-position:0 0;background-size:100% 100%;padding:.02em .14em;border-radius:4px;
+    box-decoration-break:clone;-webkit-box-decoration-break:clone;
+    transition:background-size .7s var(--ease-quint)}
+  .hl-wrap{position:relative;white-space:nowrap}
+  .hero[data-hs="0"] h1 .hl{background-size:0 100%}
+  /* the comment affordance that pops on the highlighted phrase */
+  .hero-pop{position:absolute;left:50%;top:-2.9rem;
+    transform:translateX(-50%) translateY(5px) scale(.92);
+    display:inline-flex;align-items:center;gap:.36rem;white-space:nowrap;
+    font-family:var(--sans);font-size:.74rem;font-weight:600;color:var(--ink);
+    background:#fff;border:1px solid var(--hairline);border-radius:10px;padding:.36rem .62rem;
+    box-shadow:0 12px 28px rgba(20,22,26,.2);
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .3s var(--ease-q),transform .3s var(--ease-q),visibility .3s}
+  .hero-pop svg{width:.95rem;height:.95rem;color:var(--gold-deep)}
+  /* clean bordered downward tail: border-triangle behind, white-triangle in front */
+  .hero-pop::before,.hero-pop::after{content:"";position:absolute;top:100%;left:50%;
+    width:0;height:0;border:7px solid transparent;transform:translateX(-50%)}
+  .hero-pop::before{border-top-color:var(--hairline)}
+  .hero-pop::after{border-width:6px;border-top-color:#fff;transform:translateX(-50%) translateY(-1.4px)}
+  .hero[data-hs="1"] .hero-pop,.hero[data-hs="2"] .hero-pop{
+    opacity:1;visibility:visible;transform:translateX(-50%)}
+  .hero[data-hs="1"] .hero-pop{animation:heroPulse 1.5s var(--ease-q) 2}
+  @keyframes heroPulse{0%,100%{box-shadow:0 10px 26px rgba(20,22,26,.18)}
+    50%{box-shadow:0 10px 26px rgba(20,22,26,.18),0 0 0 5px rgba(232,176,75,.2)}}
   .sub{font-size:1.17rem;color:var(--dim);max-width:31em;margin:0 0 2rem}
   .sub b{color:var(--ink);font-weight:600}
 
@@ -92,65 +118,92 @@
   .copy-note{font-size:.82rem;color:var(--gold-deep);margin:.5rem 0 0;min-height:1.2em}
   .hero-links{display:flex;gap:.7rem;margin-top:1rem}
 
-  /* hero scene: the agent hands the doc to the previewer */
-  .scenebox{display:flex;justify-content:center;align-items:center;min-height:500px;min-width:0}
-  .scene{position:relative;width:520px;height:480px;flex-shrink:0}
-  .win{position:absolute;border-radius:12px}
+  /* hero scene: a note lands in a real file, then the agent answers */
+  .scenebox{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:480px;min-width:0}
+  .hero-win{position:relative;width:min(100%,460px);border-radius:13px;overflow:hidden;
+    background:var(--paper);border:1px solid var(--hairline);
+    box-shadow:0 30px 70px rgba(23,23,18,.18)}
   .win-title{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;
     font-family:var(--mono);font-size:.68rem;letter-spacing:.06em}
-  .win.term{left:0;top:0;bottom:0;width:92%;background:var(--term);
-    border:1px solid #262a30;box-shadow:0 24px 60px rgba(20,22,26,.26)}
-  .win.term .win-title{color:#8e8e80;border-bottom:1px solid rgba(250,249,246,.08)}
-  .win.term .winbtns i{background:rgba(250,249,246,.18)}
-  .term-body{padding:1.05rem 1.15rem;font-family:var(--mono);font-size:.8rem;
-    line-height:1.6;color:#d9d9cd}
-  .tl{margin:0 0 .6rem}
-  .tl i{font-style:normal;color:var(--green);margin-right:.5rem}
-  .tl b{font-weight:500;color:var(--gold)}
-  .tl.cont{color:#8e8e80;margin-left:1.05rem}
-  .tl.l4{position:absolute;left:1.15rem;bottom:1.05rem;margin:0}
-  .cursor{display:inline-block;width:.5em;height:1.05em;background:#d9d9cd;
-    margin-left:.4rem;vertical-align:-.18em}
-  .win.prev{right:0;top:140px;width:78%;background:#fff;border:1px solid var(--hairline);
-    box-shadow:0 30px 70px rgba(23,23,18,.28)}
-  .win.prev .win-title{color:var(--dim);background:var(--stage-3);
-    border-bottom:1px solid var(--hairline-soft);border-radius:12px 12px 0 0}
-  .win.prev .winbtns i{background:rgba(23,23,18,.16)}
-  .prev-body{position:relative;padding:.95rem 11rem 1.15rem 1.1rem;min-height:10.8rem;
-    font-family:var(--serif);color:var(--paper-ink)}
-  .prev-body .ph{font-weight:700;font-size:.92rem;margin:0 0 .45rem}
-  .prev-body .ph .hash{font-family:var(--mono);font-size:.7rem;color:var(--paper-line-2);margin-right:.4rem}
-  .prev-body .pt{font-size:.85rem;line-height:1.65;margin:0 0 .45rem}
-  .sg s{background:var(--red-soft);color:var(--red);text-decoration-color:#cf8d80;
-    padding:0 .12em;border-radius:3px}
-  .sg em{font-style:normal;background:#e6f0e3;color:var(--green-ink);padding:0 .12em;border-radius:3px}
-  .pill{position:absolute;right:.85rem;width:9.6rem;background:#fff;
-    border:1px solid rgba(143,103,27,.5);border-radius:9px;padding:.45rem .6rem;
-    font-family:var(--sans);font-size:.72rem;line-height:1.45;color:var(--text);
-    box-shadow:0 10px 26px rgba(23,23,18,.12)}
-  .pill b{display:block;font-family:var(--mono);font-weight:500;font-size:.56rem;
-    letter-spacing:.13em;color:var(--gold-deep);margin-bottom:.15rem}
-  .pill.p1{top:2.7rem}
-  .pill.p2{top:6.4rem}
+  .hero-win .win-title{color:var(--dim);background:var(--stage-3);
+    border-bottom:1px solid var(--hairline-soft)}
 
-  @media (prefers-reduced-motion:no-preference){
-    .tl.l1{animation:sceneL1 14s ease-out infinite}
-    .tl.l2{animation:sceneL2 14s ease-out infinite}
-    .tl.cont{animation:sceneL3 14s ease-out infinite}
-    .win.prev{animation:sceneWin 14s ease-out infinite}
-    .pill.p1{animation:scenePill1 14s ease-out infinite}
-    .pill.p2{animation:scenePill2 14s ease-out infinite}
-    .tl.l4{animation:sceneL4 14s ease-out infinite}
-    .cursor{animation:blink 1.1s steps(1) infinite}
-  }
-  @keyframes sceneL1{0%,2%{opacity:0}5%,93%{opacity:1}98%,100%{opacity:0}}
-  @keyframes sceneL2{0%,8%{opacity:0}11%,93%{opacity:1}98%,100%{opacity:0}}
-  @keyframes sceneL3{0%,12%{opacity:0}15%,93%{opacity:1}98%,100%{opacity:0}}
-  @keyframes sceneWin{0%,22%{opacity:0;transform:translateY(16px) scale(.97)}
-    27%,93%{opacity:1;transform:none}98%,100%{opacity:0;transform:translateY(16px) scale(.97)}}
-  @keyframes scenePill1{0%,35%{opacity:0;transform:translateX(12px)}39%,93%{opacity:1;transform:none}98%,100%{opacity:0}}
-  @keyframes scenePill2{0%,44%{opacity:0;transform:translateX(12px)}48%,93%{opacity:1;transform:none}98%,100%{opacity:0}}
-  @keyframes sceneL4{0%,62%{opacity:0}66%,93%{opacity:1}98%,100%{opacity:0}}
+  /* document face: ghosted at rest, then crystallizes into a real file */
+  .hero-doc{position:relative;padding:1.15rem 1.25rem 1.35rem;min-height:15.5rem;
+    display:flex;flex-direction:column;font-family:var(--serif);color:var(--paper-ink);
+    transition:filter .65s var(--ease-quint),opacity .65s var(--ease-quint)}
+  .hero[data-hs="0"] .hero-doc,.hero[data-hs="1"] .hero-doc{
+    filter:blur(3.5px) saturate(.3);opacity:.4}
+  .hero-h{font-weight:700;font-size:1.02rem;margin:0 0 .55rem}
+  .hero-h .hash{font-family:var(--mono);font-size:.72rem;color:var(--paper-line-2);margin-right:.4rem}
+  .hero-p{font-size:.95rem;line-height:1.72;margin:0}
+  .hero-anchor .o,.hero-anchor .n{border-radius:3px;padding:0 .1em;
+    transition:background .45s var(--ease-q),color .45s var(--ease-q)}
+  .hero-anchor .n{display:none}
+  /* commented: the original span is highlighted amber */
+  .hero[data-hs="2"] .hero-anchor .o,.hero[data-hs="3"] .hero-anchor .o{background:var(--mark)}
+  /* resolved by the agent: strike the original, reveal the green edit */
+  .hero[data-hs="4"] .hero-anchor .o,.hero[data-hs="5"] .hero-anchor .o{
+    background:var(--red-soft);color:var(--red);text-decoration:line-through;text-decoration-color:#cf8d80}
+  .hero[data-hs="4"] .hero-anchor .n,.hero[data-hs="5"] .hero-anchor .n{
+    display:inline;background:#e6f0e3;color:var(--green-ink);margin-left:.3em}
+
+  /* the note that lands in the file */
+  .hero-thread{margin-top:1.05rem}
+  .hero-card{background:var(--stage-3);border:1px solid var(--hairline);border-radius:10px;
+    padding:.5rem .72rem;font-family:var(--sans);font-size:.82rem;line-height:1.5;color:var(--text);
+    opacity:0;transform:translateY(8px);visibility:hidden;
+    transition:opacity .45s var(--ease-q),transform .45s var(--ease-q),visibility .45s}
+  .hero-card .who{font-family:var(--mono);font-size:.56rem;letter-spacing:.13em;
+    display:block;margin:0 0 .2rem;color:var(--gold-deep)}
+  .hero-card p{margin:0}
+  .hero[data-hs="2"] .hero-card,.hero[data-hs="3"] .hero-card,
+  .hero[data-hs="4"] .hero-card,.hero[data-hs="5"] .hero-card{
+    opacity:1;transform:none;visibility:visible}
+
+  /* action area: hand-off (the agent action) swaps to an "addressed" chip once resolved */
+  .hero-act{align-self:stretch;position:relative;margin-top:auto;height:2.05rem}
+  .hero-handoff,.hero-addressed{position:absolute;right:0;bottom:0;display:inline-flex;align-items:center;gap:.4rem}
+  .hero-handoff{font-family:var(--sans);font-size:.74rem;font-weight:600;color:var(--green-deep);
+    background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.42);border-radius:8px;
+    padding:.42rem .8rem;cursor:default;opacity:0;transform:translateY(6px);visibility:hidden;
+    transition:opacity .4s var(--ease-q),transform .4s var(--ease-q),visibility .4s,
+      background .15s,color .15s,border-color .15s}
+  .hero-handoff svg{width:.85rem;height:.85rem}
+  .hero[data-hs="3"] .hero-handoff{opacity:1;transform:none;visibility:visible}
+  .hero[data-hs="3"] .hero-handoff.is-clicking{transform:scale(.95);
+    background:var(--green-deep);border-color:var(--green-deep);color:#fff}
+  .hero-addressed{font-family:var(--mono);font-size:.62rem;letter-spacing:.09em;color:var(--green-deep);
+    background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.38);border-radius:999px;
+    padding:.34rem .72rem;opacity:0;visibility:hidden;transition:opacity .4s var(--ease-q),visibility .4s}
+  .hero[data-hs="4"] .hero-addressed,.hero[data-hs="5"] .hero-addressed{opacity:1;visibility:visible}
+
+  /* terminal face: the agent reports back */
+  .hero-term{position:absolute;inset:0;background:#1c1f26;border-radius:13px;
+    display:flex;flex-direction:column;opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .55s var(--ease-quint),visibility .55s}
+  .hero[data-hs="5"] .hero-term{opacity:1;visibility:visible}
+  .hero-tbar{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;
+    border-bottom:1px solid rgba(255,255,255,.08)}
+  .hero-tbar .winbtns i{background:rgba(255,255,255,.2)}
+  .hero-tapp{font-family:var(--mono);font-size:.7rem;letter-spacing:.05em;color:var(--term-dim)}
+  .hero-tbody{padding:1.15rem 1.2rem;font-family:var(--mono);font-size:.82rem;
+    line-height:1.7;color:var(--term-ink)}
+  .hero-tl{margin:0 0 .55rem}
+  .hero-tl i{font-style:normal;color:var(--green);margin-right:.45rem}
+  .hero-tl b{font-weight:500;color:var(--gold)}
+  .hero-tcur{display:inline-block;width:.5em;height:1.05em;background:var(--term-ink);
+    vertical-align:-.18em;margin-left:.1rem;animation:blink 1.1s steps(1) infinite}
+
+  /* replay control: appears once the gesture has played through */
+  .hero-replay{margin-top:1.15rem;display:inline-flex;align-items:center;gap:.35rem;
+    font-family:var(--sans);font-size:.72rem;font-weight:600;color:var(--dim);
+    background:transparent;border:1px solid var(--hairline);border-radius:999px;
+    padding:.3rem .75rem;cursor:pointer;opacity:0;visibility:hidden;
+    transition:opacity .35s var(--ease-q),visibility .35s,color .15s,border-color .15s}
+  .hero-replay:hover{color:var(--ink);border-color:var(--ink)}
+  .hero-replay.show{opacity:1;visibility:visible}
+
   @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
 
   /* section scaffolding */
@@ -339,11 +392,15 @@
 
   @media (prefers-reduced-motion:reduce){
     .hw-card,.hw-resolved,.hw-anchor .o,.hw-anchor .n{transition:none}
-    .hw-caret{animation:none}
+    .hw-caret,.hero-tcur{animation:none}
+    .hero-doc,.hero-card,.hero-handoff,.hero-addressed,.hero-pop,.hero-term,
+    .hero-anchor .o,.hero-anchor .n,.hero-replay,h1 .hl{transition:none}
+    .hero-pop{animation:none}
   }
   @media(max-width:880px){
     .hero-in{grid-template-columns:1fr}
     .scenebox{order:-1;min-height:420px;transform:scale(.85);margin:-1rem 0 -1.5rem}
+    .hero-replay{display:none}
     .real-grid,.start-grid{grid-template-columns:1fr}
     .how-grid{grid-template-columns:1fr;gap:1.4rem}
     .how-stage{position:static;height:auto;display:block;margin-top:1.2rem}
@@ -374,10 +431,10 @@
 
 <main id="top">
 
-  <div class="hero">
+  <div class="hero" data-hs="4">
     <div class="shell hero-in">
       <div>
-        <h1>The <span class="hl">review layer</span> for agent-written markdown.</h1>
+        <h1>The <span class="hl-wrap"><span class="hl">review layer</span><span class="hero-pop" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Comment</span></span> for agent-written markdown.</h1>
         <p class="sub">Your agent writes the doc. You leave comments and suggested edits on the exact text, in the browser. <b>Your agent reads every note, acts, and answers.</b></p>
         <div class="paste">
           <p class="cmd" id="install-cmd">Install Markwise for me with <code>npm i -g github:farandclose/markwise</code>, then run <code>markwise agent-setup</code> and follow what it prints.</p>
@@ -391,28 +448,29 @@
           <a class="btn btn-ghost" href="https://github.com/farandclose/markwise">View on GitHub</a>
         </div>
       </div>
-      <div class="scenebox" aria-hidden="true">
-        <div class="scene">
-          <div class="win term">
-            <div class="win-title"><span class="winbtns"><i></i><i></i><i></i></span>Claude Code</div>
-            <div class="term-body">
-              <p class="tl l1"><i>&#9210;</i>Wrote <b>launch-plan.md</b> (412 lines)</p>
-              <p class="tl l2"><i>&#9210;</i>Your doc is ready for review.</p>
-              <p class="tl cont">Opening markwise preview...</p>
-              <p class="tl l4"><i>&#9210;</i>3 notes from you. On it.<span class="cursor"></span></p>
+      <div class="scenebox">
+        <div class="hero-win" aria-hidden="true">
+          <div class="win-title"><span class="winbtns"><i></i><i></i><i></i></span>localhost &middot; launch-plan.md</div>
+          <div class="hero-doc">
+            <p class="hero-h"><span class="hash">##</span>Rollout</p>
+            <p class="hero-p">We will launch the partner beta in <span class="hero-anchor"><span class="o">Q4 2026</span><span class="n">H2 2026</span></span>, with mobile following in the new year.</p>
+            <div class="hero-thread">
+              <div class="hero-card"><span class="who">YOU</span><p>We agreed H2, not Q4 - the partner beta cannot slip past summer.</p></div>
+            </div>
+            <div class="hero-act">
+              <button class="hero-handoff" type="button" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Hand off to the agent</button>
+              <span class="hero-addressed">&#10003; Addressed by the agent</span>
             </div>
           </div>
-          <div class="win prev">
-            <div class="win-title"><span class="winbtns"><i></i><i></i><i></i></span>localhost &middot; launch-plan.md</div>
-            <div class="prev-body">
-              <p class="ph"><span class="hash">##</span>Rollout</p>
-              <p class="pt">We will launch the partner beta in <span class="sg"><s>Q4</s> <em>H2</em></span> 2026, with mobile following in the new year.</p>
-              <p class="pt">Pricing stays flat through the beta period.</p>
-              <div class="pill p1"><b>REPLACE</b>Q4 2026 &rarr; H2 2026</div>
-              <div class="pill p2"><b>COMMENT</b>Can mobile hold to January?</div>
+          <div class="hero-term">
+            <div class="hero-tbar"><span class="winbtns"><i></i><i></i><i></i></span><span class="hero-tapp">Claude Code</span></div>
+            <div class="hero-tbody">
+              <p class="hero-tl"><i>&#9210;</i>Read 1 note on <b>launch-plan.md</b></p>
+              <p class="hero-tl"><i>&#10003;</i>Addressed all comments.<span class="hero-tcur"></span></p>
             </div>
           </div>
         </div>
+        <button class="hero-replay jsonly" type="button" aria-label="Replay the animation">&#8635; Replay</button>
       </div>
     </div>
   </div>
@@ -673,6 +731,41 @@
     } else {
       win.setAttribute('data-step', '4'); // static fallback: the resolved, complete state
     }
+  })();
+
+  // hero gesture: comment -> agent resolves the edit -> terminal handshake. Plays once in view, replayable.
+  (function(){
+    var hero = document.querySelector('.hero');
+    if(!hero) return;
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var wide = window.matchMedia('(min-width: 881px)').matches;
+    var handoff = hero.querySelector('.hero-handoff');
+    var replay = hero.querySelector('.hero-replay');
+    var timers = [];
+    function set(s){ hero.setAttribute('data-hs', String(s)); }
+    function clearAll(){ timers.forEach(clearTimeout); timers = []; if(handoff) handoff.classList.remove('is-clicking'); }
+    function play(){
+      clearAll();
+      if(replay) replay.classList.remove('show');
+      set(0);
+      timers.push(setTimeout(function(){ set(1); }, 550));    // highlight sweeps in, bubble pops + pulses
+      timers.push(setTimeout(function(){ set(2); }, 2400));   // bubble activates: doc crystallizes, note lands
+      timers.push(setTimeout(function(){ set(3); }, 3950));   // hand-off chip appears
+      timers.push(setTimeout(function(){ if(handoff) handoff.classList.add('is-clicking'); }, 5250));
+      timers.push(setTimeout(function(){ if(handoff) handoff.classList.remove('is-clicking'); set(4); }, 5620)); // Q4 -> H2 resolves
+      timers.push(setTimeout(function(){ set(5); }, 6950));   // flip to terminal: addressed all comments
+      timers.push(setTimeout(function(){ if(replay) replay.classList.add('show'); }, 7600));
+    }
+    if(!reduced && wide && 'IntersectionObserver' in window){
+      set(0); // start at rest, avoids a flash of the default resolved frame
+      var played = false;
+      var io = new IntersectionObserver(function(es){
+        es.forEach(function(e){ if(e.isIntersecting && !played){ played = true; play(); } });
+      }, { threshold: 0.45 });
+      io.observe(hero);
+      if(replay) replay.addEventListener('click', play);
+    }
+    // else: keep the HTML default data-hs="4" (resolved doc, complete without JS)
   })();
 </script>
 </body>
