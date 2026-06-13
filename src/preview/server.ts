@@ -1,5 +1,4 @@
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { buildDocPayload } from './payload.js';
@@ -7,6 +6,7 @@ import type { DocPayload } from './types.js';
 import { fixText } from '../fix.js';
 import { lintText } from '../lint.js';
 import { shortHash } from '../hash.js';
+import { readDocument, writeDocument } from '../eol.js';
 import { appendReply, resolveNote, createNote, discardNote, NoteMutationError } from './mutate.js';
 
 // Static assets live next to the compiled server (dist/preview/assets/, populated by the build's
@@ -85,7 +85,7 @@ function persist(
   expectedVersion: string | undefined,
   transform: (src: string) => string
 ): DocPayload {
-  const source = readFileSync(filePath, 'utf8');
+  const { source, eol } = readDocument(filePath);
   if (expectedVersion === undefined || expectedVersion === '') {
     throw new NoteMutationError('missing x-mw-version header (reload the page)', 428);
   }
@@ -101,7 +101,7 @@ function persist(
       422
     );
   }
-  writeFileSync(filePath, fixed, 'utf8');
+  writeDocument(filePath, fixed, eol);
   return buildDocPayload(fixed, filePath);
 }
 
@@ -191,7 +191,7 @@ export function createPreviewServer(filePath: string): Server {
       }
 
       if (req.method === 'GET' && url.pathname === '/api/doc') {
-        const source = readFileSync(filePath, 'utf8');
+        const { source } = readDocument(filePath);
         const payload = buildDocPayload(source, filePath);
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(payload));
