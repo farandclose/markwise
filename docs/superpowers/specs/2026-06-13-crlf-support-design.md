@@ -84,6 +84,8 @@ A single-responsibility utility with three pure functions:
 - `applyEol(text: string, eol: '\r\n' | '\n'): string` - if `eol` is `'\r\n'`, convert the LF
   `text`'s `\n` to `\r\n`; otherwise return `text` unchanged. Inverse of `toLf` for write-back.
   Assumes `text` is already LF (it is - it came from the LF-only core).
+- `readDocument(file)` / `writeDocument(file, text, eol)` - thin fs wrappers that apply the three
+  functions, so each read/write site uses one tested helper rather than inlining the calls.
 
 ### 2. Read boundary - normalize on entry
 
