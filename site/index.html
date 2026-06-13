@@ -190,15 +190,16 @@
   .how--live .how-step{opacity:.3}
   .how--live .how-step.active{opacity:1}
 
-  /* the pinned stage: one box, same real estate, that transforms terminal -> document */
-  .how-stage{position:sticky;top:14vh}
+  /* the pinned stage: one box, vertically centered so it sits beside the active step */
+  .how-stage{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center}
   .how-win{position:relative;border-radius:14px;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.5)}
   .hw-doc,.hw-term{transition:opacity .45s ease}
   /* document face is in flow and defines the height; terminal face overlays it exactly */
   .hw-doc{position:relative;background:var(--paper);color:var(--paper-ink);
     font-family:var(--serif);display:flex;flex-direction:column}
-  .hw-term{position:absolute;inset:0;background:var(--term);border:1px solid #2c3038;
-    border-radius:14px;opacity:0;pointer-events:none}
+  .hw-term{position:absolute;inset:0;background:#1c1f26;border:1px solid #363c45;
+    border-radius:14px;opacity:0;pointer-events:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
   .how-win[data-step="0"] .hw-term{opacity:1}
   .how-win[data-step="0"] .hw-doc{opacity:0}
 
@@ -222,7 +223,9 @@
   .hw-file{font-family:var(--mono);font-size:.7rem;color:var(--paper-line-2);letter-spacing:.03em}
   .hw-handoff{margin-left:auto;font-family:var(--sans);font-size:.68rem;font-weight:600;
     color:var(--dim);background:transparent;border:1px solid var(--hairline);border-radius:7px;
-    padding:.3rem .6rem;cursor:default;white-space:nowrap}
+    padding:.3rem .6rem;cursor:default;white-space:nowrap;
+    transition:transform .12s ease,background .2s ease,color .2s ease,border-color .2s ease}
+  .hw-handoff.is-clicking{transform:scale(.94);background:var(--ink);border-color:var(--ink);color:#fff}
 
   .hw-body{position:relative;padding:1.3rem 1.45rem;min-height:17.5rem;display:flex;flex-direction:column}
   .hw-h{font-weight:700;font-size:1.1rem;margin:0 0 .55rem;color:var(--paper-ink)}
@@ -231,10 +234,11 @@
   .hw-anchor .o,.hw-anchor .n{border-radius:3px;padding:0 .1em;transition:background .35s,color .35s}
   .hw-anchor .n{display:none}
   .how-win[data-step="2"] .hw-anchor .o{background:var(--mark)}
-  .how-win[data-step="3"] .hw-anchor .o{background:var(--red-soft);color:var(--red);
+  /* the edit lands only after the hand-off click (is-revised) */
+  .how-win.is-revised .hw-anchor .o{background:var(--red-soft);color:var(--red);
     text-decoration:line-through;text-decoration-color:#cf8d80}
-  .how-win[data-step="3"] .hw-anchor .n,.how-win[data-step="4"] .hw-anchor .n{display:inline}
-  .how-win[data-step="3"] .hw-anchor .n{background:#e6f0e3;color:var(--green-ink)}
+  .how-win.is-revised .hw-anchor .n,.how-win[data-step="4"] .hw-anchor .n{display:inline}
+  .how-win.is-revised .hw-anchor .n{background:#e6f0e3;color:var(--green-ink)}
   .how-win[data-step="4"] .hw-anchor .o{display:none}
 
   /* comment bubble: pops up before the note is written */
@@ -262,11 +266,13 @@
   .hw-card.agent{margin-left:1rem}
   /* step 2: comment appears (after the bubble) */
   .how-win[data-step="2"] .hw-card.you{opacity:1;transform:none;visibility:visible;transition-delay:.5s}
-  /* steps 3-4: comment stays; at step 3 the edit lands first, then the agent reply */
-  .how-win[data-step="3"] .hw-card.you,.how-win[data-step="4"] .hw-card.you,
-  .how-win[data-step="3"] .hw-card.agent,.how-win[data-step="4"] .hw-card.agent{
+  /* your note persists through steps 3-4 */
+  .how-win[data-step="3"] .hw-card.you,.how-win[data-step="4"] .hw-card.you{
     opacity:1;transform:none;visibility:visible}
-  .how-win[data-step="3"] .hw-card.agent{transition-delay:.5s}
+  /* the agent reply appears only after the hand-off, and stays through resolve */
+  .how-win.is-revised .hw-card.agent,.how-win[data-step="4"] .hw-card.agent{
+    opacity:1;transform:none;visibility:visible}
+  .how-win.is-revised .hw-card.agent{transition-delay:.5s}
 
   /* resolve: action sits under the thread, then a pretend click closes it */
   .hw-act{position:relative;min-height:2.1rem;margin-top:.35rem}
@@ -340,7 +346,7 @@
     .scenebox{order:-1;min-height:420px;transform:scale(.85);margin:-1rem 0 -1.5rem}
     .real-grid,.start-grid{grid-template-columns:1fr}
     .how-grid{grid-template-columns:1fr;gap:1.4rem}
-    .how-stage{position:static;margin-top:1.2rem}
+    .how-stage{position:static;height:auto;display:block;margin-top:1.2rem}
     .how-step{min-height:0;padding:.7rem 0}
   }
   @media(max-width:560px){
@@ -443,8 +449,8 @@
           <li class="how-step" data-step="3">
             <span class="how-n">4</span>
             <div>
-              <h3>Your agent revises and answers every note.</h3>
-              <p>Hand the file back. The agent edits the doc and replies in-thread, as suggestions you can accept.</p>
+              <h3>Hand off kicks off the agent.</h3>
+              <p>One click bundles every open note. Your agent revises the doc and answers each one in-thread, as suggestions you can accept.</p>
             </div>
           </li>
           <li class="how-step" data-step="4">
@@ -605,9 +611,26 @@
     if(!how || !win) return;
     var steps = Array.prototype.slice.call(document.querySelectorAll('.how-step'));
     var resolveBtn = win.querySelector('.hw-resolve');
+    var handoffBtn = win.querySelector('.hw-handoff');
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var wide = window.matchMedia('(min-width: 881px)').matches;
     var live = !reduced && wide && 'IntersectionObserver' in window;
+
+    // hand-off micro-interaction: pretend-click the button, then the agent's edit + reply land
+    var ht1, ht2, reviseStarted = false;
+    function resetRevise(){
+      reviseStarted = false;
+      win.classList.remove('is-revised');
+      if(handoffBtn) handoffBtn.classList.remove('is-clicking');
+      clearTimeout(ht1); clearTimeout(ht2);
+    }
+    function runRevise(){
+      if(reviseStarted) return;
+      reviseStarted = true;
+      if(handoffBtn) handoffBtn.classList.add('is-clicking');           // pretend click
+      ht1 = setTimeout(function(){ if(handoffBtn) handoffBtn.classList.remove('is-clicking'); }, 340);
+      ht2 = setTimeout(function(){ win.classList.add('is-revised'); }, 500); // then the agent acts
+    }
 
     // resolve micro-interaction: show the button, pretend-click it, then the chip appears
     var rt1, rt2, resolveStarted = false;
@@ -635,14 +658,18 @@
       var io = new IntersectionObserver(function(entries){
         entries.forEach(function(e){
           if(e.isIntersecting){
-            var n = e.target.getAttribute('data-step');
+            var li = e.target.closest('.how-step');
+            if(!li) return;
+            var n = li.getAttribute('data-step');
             win.setAttribute('data-step', n);
-            steps.forEach(function(s){ s.classList.toggle('active', s === e.target); });
+            steps.forEach(function(s){ s.classList.toggle('active', s === li); });
+            if(n === '3'){ runRevise(); } else { resetRevise(); }
             if(n === '4'){ runResolve(); } else { resetResolve(); }
           }
         });
       }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
-      steps.forEach(function(s){ io.observe(s); });
+      // observe each step's text (not the tall block) so the window flips when the copy hits center
+      steps.forEach(function(s){ var c = s.querySelector('div'); if(c) io.observe(c); });
     } else {
       win.setAttribute('data-step', '4'); // static fallback: the resolved, complete state
     }
