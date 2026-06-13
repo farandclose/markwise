@@ -748,13 +748,13 @@
       clearAll();
       if(replay) replay.classList.remove('show');
       set(0);
-      timers.push(setTimeout(function(){ set(1); }, 550));    // highlight sweeps in, bubble pops + pulses
-      timers.push(setTimeout(function(){ set(2); }, 2400));   // bubble activates: doc crystallizes, note lands
-      timers.push(setTimeout(function(){ set(3); }, 3950));   // hand-off chip appears
-      timers.push(setTimeout(function(){ if(handoff) handoff.classList.add('is-clicking'); }, 5250));
-      timers.push(setTimeout(function(){ if(handoff) handoff.classList.remove('is-clicking'); set(4); }, 5620)); // Q4 -> H2 resolves
-      timers.push(setTimeout(function(){ set(5); }, 6950));   // flip to terminal: addressed all comments
-      timers.push(setTimeout(function(){ if(replay) replay.classList.add('show'); }, 7600));
+      timers.push(setTimeout(function(){ set(1); }, 500));    // highlighter sweeps in, bubble pops + pulses
+      timers.push(setTimeout(function(){ set(2); }, 1900));   // bubble activates: doc crystallizes, note lands
+      timers.push(setTimeout(function(){ set(3); }, 3300));   // hand-off chip appears
+      timers.push(setTimeout(function(){ if(handoff) handoff.classList.add('is-clicking'); }, 4450));
+      timers.push(setTimeout(function(){ if(handoff) handoff.classList.remove('is-clicking'); set(4); }, 4820)); // Q4 -> H2 resolves in the doc
+      timers.push(setTimeout(function(){ set(5); }, 6300));   // flip to terminal: addressed all comments
+      timers.push(setTimeout(function(){ if(replay) replay.classList.add('show'); }, 7000));
     }
     if(!reduced && wide && 'IntersectionObserver' in window){
       set(0); // start at rest, avoids a flash of the default resolved frame
