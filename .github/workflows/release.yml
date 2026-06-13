@@ -7,6 +7,12 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Trusted Publishing (OIDC): GitHub mints a short-lived token that npm verifies against the
+    # trusted publisher configured on the package (Settings -> Trusted Publishing on npmjs.com).
+    # No long-lived NPM_TOKEN secret is stored, and provenance is attached automatically.
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -15,6 +21,8 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
+      # Trusted publishing needs npm >= 11.5.1; the npm bundled with Node 22 is older.
+      - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - name: Verify the tag matches package.json version
         run: |
@@ -25,6 +33,6 @@ jobs:
           fi
       - run: pnpm run build
       - run: pnpm test
+      # No token needed: OIDC authenticates against the trusted publisher, and npm attaches a
+      # provenance attestation automatically (the repo is public).
       - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
