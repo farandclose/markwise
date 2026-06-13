@@ -1,0 +1,12 @@
+# Markwise stores review markers in-file and anchors notes by byte offset and content hash, so
+# LF is its canonical line ending. Force LF on checkout across all platforms (this overrides
+# core.autocrlf on Windows) so parsing, anchoring, and the test fixtures stay deterministic.
+* text=auto eol=lf
+
+# Binary assets: never normalize line endings.
+*.png binary
+*.gif binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

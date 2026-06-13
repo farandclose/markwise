@@ -13,7 +13,7 @@ markwise --help
 If Markwise is missing and the user asked you to install it:
 
 ```bash
-npm i -g github:farandclose/markwise
+npm i -g markwise
 ```
 
 If the user did not explicitly ask you to install software, ask before installing.
