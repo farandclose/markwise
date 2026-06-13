@@ -2,6 +2,17 @@
   "name": "markwise",
   "version": "0.1.0",
   "description": "A human-agent review layer for markdown: anchored, structured notes stored in-file.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farandclose/markwise.git"
+  },
+  "homepage": "https://github.com/farandclose/markwise#readme",
+  "bugs": {
+    "url": "https://github.com/farandclose/markwise/issues"
+  },
+  "keywords": ["markdown", "review", "annotations", "comments", "cli", "agents", "previewer"],
+  "author": "farandclose",
+  "packageManager": "pnpm@10.29.3",
   "type": "module",
   "bin": {
     "markwise": "./dist/cli.js"
