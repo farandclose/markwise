@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, accessSync, constants } from 'node:fs';
+import { readFileSync, accessSync, constants } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { lintText } from './lint.js';
 import { fixText } from './fix.js';
@@ -7,6 +7,7 @@ import { status, type StatusReport } from './status.js';
 import { buildPromptOutput } from './prompt.js';
 import { buildSetupOutput } from './setup.js';
 import { stripText } from './strip.js';
+import { readDocument, writeDocument, applyEol } from './eol.js';
 import { createPreviewServer } from './preview/server.js';
 import type { Finding } from './types.js';
 
@@ -96,8 +97,9 @@ function lintCommand(args: Args): number {
 
   for (const file of args.files) {
     let source: string;
+    let eol: '\r\n' | '\n';
     try {
-      source = readFileSync(file, 'utf8');
+      ({ source, eol } = readDocument(file));
     } catch {
       process.stderr.write(`markwise: cannot read ${file}\n`);
       return 2;
@@ -108,7 +110,7 @@ function lintCommand(args: Args): number {
       const { output, changes } = fixText(source);
       fixChanges = changes;
       if (output !== source) {
-        writeFileSync(file, output, 'utf8');
+        writeDocument(file, output, eol);
         source = output;
       }
     }
@@ -193,7 +195,7 @@ function statusCommand(args: Args): number {
   for (const file of args.files) {
     let source: string;
     try {
-      source = readFileSync(file, 'utf8');
+      ({ source } = readDocument(file));
     } catch {
       process.stderr.write(`markwise: cannot read ${file}\n`);
       return 2;
@@ -216,7 +218,7 @@ function promptCommand(args: Args): number {
 
   let document: string;
   try {
-    document = readFileSync(file, 'utf8');
+    ({ source: document } = readDocument(file));
   } catch {
     process.stderr.write(`markwise: cannot read ${file}\n`);
     return 2;
@@ -265,8 +267,9 @@ function exportCommand(args: Args): number {
   const file = args.files[0]!;
 
   let source: string;
+  let eol: '\r\n' | '\n';
   try {
-    source = readFileSync(file, 'utf8');
+    ({ source, eol } = readDocument(file));
   } catch {
     process.stderr.write(`markwise: cannot read ${file}\n`);
     return 2;
@@ -276,14 +279,14 @@ function exportCommand(args: Args): number {
 
   if (args.output) {
     try {
-      writeFileSync(args.output, clean, 'utf8');
+      writeDocument(args.output, clean, eol);
     } catch {
       process.stderr.write(`markwise: cannot write ${args.output}\n`);
       return 2;
     }
     process.stderr.write(`Wrote clean copy to ${args.output} (original untouched)\n`);
   } else {
-    process.stdout.write(clean);
+    process.stdout.write(applyEol(clean, eol));
   }
   return 0;
 }
