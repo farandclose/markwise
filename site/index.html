@@ -26,11 +26,11 @@
     --ink:#1b1d21; --text:#3a3d42; --dim:#6a6e74;
     /* terminal world: the agent side. Cool true-black, not the old warm #15150f. */
     --term:#111317; --term-2:#191c21; --term-ink:#d3d6da; --term-dim:#8a8e94;
-    /* document mockup surface */
-    --paper:#ffffff; --paper-line:#c8ccd1; --paper-line-2:#9aa0a6; --paper-ink:#23252a; --paper-soft:#6a6e74;
+    /* document mockup surface: the app's warm Sepia paper (reused from src/preview). Page + UI chrome above stay neutral. */
+    --paper:#e7d7b2; --paper-line:#d3bf95; --paper-line-2:#8a7b4f; --paper-ink:#332b16; --paper-soft:#635733;
     /* diff language: the only chroma on the page (deletion / insertion / comment-mark) */
     --gold:#e8b04b; --gold-deep:#8f671b; --green:#8fc97e; --green-deep:#3f7d4e; --green-ink:#27502f;
-    --red:#b04a3a; --red-soft:#f3ded9; --mark:rgba(232,176,75,.42);
+    --red:#b04a3a; --red-soft:rgba(176,64,52,.20); --mark:rgba(196,140,28,.46);
     --hairline:rgba(20,22,26,.14); --hairline-soft:rgba(20,22,26,.07);
     /* type: three families, three worlds (display / document / terminal) */
     --display:"Schibsted Grotesk",system-ui,-apple-system,sans-serif;
@@ -158,12 +158,12 @@
   /* hero scene: a note lands in a real file, then the agent answers */
   .scenebox{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:480px;min-width:0}
   .hero-win{position:relative;width:min(100%,460px);border-radius:13px;overflow:hidden;
-    background:var(--paper);border:1px solid var(--hairline);
+    background:var(--paper);border:1px solid #d3bf95;
     box-shadow:0 30px 70px rgba(23,23,18,.18)}
   .win-title{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;
     font-family:var(--mono);font-size:.68rem;letter-spacing:.06em}
-  .hero-win .win-title{color:var(--dim);background:var(--stage-3);
-    border-bottom:1px solid var(--hairline-soft)}
+  .hero-win .win-title{color:#635733;background:#ddca9f;
+    border-bottom:1px solid #d3bf95}
   /* the curtain: blur lives on the screen stack so chrome/shadow stay crisp; screen
      swaps happen WHILE engaged, hidden from the viewer */
   .hero-screen{position:relative;transition:filter .5s var(--ease-quint)}
@@ -182,14 +182,14 @@
   .hero-win[data-doc="commenting"] .hero-anchor .o{background:var(--mark)}
   /* resolved: strike the original, reveal the green edit (instant - happens behind the curtain) */
   .hero-win[data-doc="resolved"] .hero-anchor .o{background:var(--red-soft);color:var(--red);
-    text-decoration:line-through;text-decoration-color:#cf8d80;transition:none}
-  .hero-win[data-doc="resolved"] .hero-anchor .n{display:inline;background:#e6f0e3;color:var(--green-ink);margin-left:.3em}
+    text-decoration:line-through;text-decoration-color:#b87f63;transition:none}
+  .hero-win[data-doc="resolved"] .hero-anchor .n{display:inline;background:rgba(28,128,71,.18);color:var(--green-ink);margin-left:.3em}
 
   /* the note that lands in the file. Visible by default (no-JS + reduced-motion fallback);
      the gesture hides it (.is-animating, no .show) then brings it in. */
   .hero-thread{margin-top:1.05rem}
-  .hero-card{background:var(--stage-3);border:1px solid var(--hairline);border-radius:10px;
-    padding:.5rem .72rem;font-family:var(--sans);font-size:.82rem;line-height:1.5;color:var(--text)}
+  .hero-card{background:#f3e8cd;border:1px solid #d3bf95;border-radius:10px;
+    padding:.5rem .72rem;font-family:var(--sans);font-size:.82rem;line-height:1.5;color:var(--paper-ink)}
   .hero-card .who{font-family:var(--mono);font-size:.56rem;letter-spacing:.13em;
     display:block;margin:0 0 .2rem;color:var(--gold-deep)}
   .hero-card p{margin:0}
@@ -319,7 +319,7 @@
 
   /* document face header: markwise + file + hand-off CTA */
   .hw-bar{display:flex;align-items:center;gap:.55rem;padding:.5rem .8rem .5rem .95rem;
-    background:var(--stage-3);border-bottom:1px solid var(--hairline-soft)}
+    background:#ddca9f;border-bottom:1px solid #d3bf95}
   .hw-brand{font-family:var(--display);font-weight:800;font-size:.84rem;color:var(--ink);letter-spacing:-.01em}
   .hw-brand i{font-style:normal;color:var(--gold-deep)}
   .hw-file{font-family:var(--mono);font-size:.7rem;color:var(--paper-line-2);letter-spacing:.03em}
@@ -338,9 +338,9 @@
   .how-win[data-step="2"] .hw-anchor .o{background:var(--mark)}
   /* the edit lands only after the hand-off click (is-revised) */
   .how-win.is-revised .hw-anchor .o{background:var(--red-soft);color:var(--red);
-    text-decoration:line-through;text-decoration-color:#cf8d80}
+    text-decoration:line-through;text-decoration-color:#b87f63}
   .how-win.is-revised .hw-anchor .n,.how-win[data-step="4"] .hw-anchor .n{display:inline}
-  .how-win.is-revised .hw-anchor .n{background:#e6f0e3;color:var(--green-ink)}
+  .how-win.is-revised .hw-anchor .n{background:rgba(28,128,71,.18);color:var(--green-ink)}
   .how-win[data-step="4"] .hw-anchor .o{display:none}
 
   /* comment bubble: pops up before the note is written */
@@ -357,7 +357,7 @@
   .how-win[data-step="2"] .hw-bubble{opacity:1;transform:none;transition-delay:.15s}
 
   .hw-thread{margin-top:1.05rem;display:flex;flex-direction:column;gap:.5rem}
-  .hw-card{background:var(--stage-3);border:1px solid var(--hairline);border-radius:10px;
+  .hw-card{background:#f3e8cd;border:1px solid #d3bf95;border-radius:10px;
     padding:.55rem .75rem;font-family:var(--sans);font-size:.85rem;line-height:1.5;
     opacity:0;transform:translateY(8px);visibility:hidden;
     transition:opacity .35s ease,transform .35s ease,visibility .35s}
