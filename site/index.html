@@ -39,6 +39,7 @@
     --mono:"Spline Sans Mono",ui-monospace,Menlo,Consolas,monospace;
     /* motion */
     --ease-q:cubic-bezier(.25,1,.5,1); --ease-quint:cubic-bezier(.22,1,.36,1);
+    --ease-back:cubic-bezier(.34,1.56,.64,1);
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
@@ -92,27 +93,33 @@
     background-size:100% 100%;clip-path:inset(0 0 0 0);
     transition:clip-path .7s var(--ease-quint)}
   .hl-wrap{position:relative;white-space:nowrap}
-  .hero[data-hs="0"] h1 .hl::before{clip-path:inset(0 100% 0 0)}
-  /* the comment affordance that pops on the highlighted phrase */
-  .hero-pop{position:absolute;left:50%;top:-2.9rem;
-    transform:translateX(-50%) translateY(5px) scale(.92);
-    display:inline-flex;align-items:center;gap:.36rem;white-space:nowrap;
-    font-family:var(--sans);font-size:.74rem;font-weight:600;color:var(--ink);
-    background:#fff;border:1px solid var(--hairline);border-radius:10px;padding:.36rem .62rem;
-    box-shadow:0 12px 28px rgba(20,22,26,.2);
-    opacity:0;visibility:hidden;pointer-events:none;
-    transition:opacity .3s var(--ease-q),transform .3s var(--ease-q),visibility .3s}
-  .hero-pop svg{width:.95rem;height:.95rem;color:var(--gold-deep)}
+  .hero[data-hs="rest"] h1 .hl::before{clip-path:inset(0 100% 0 0)}
+  /* the comment affordance now pops on the anchored phrase, inside the doc */
+  .hero-anchor{position:relative}
+  .hb-docpop{position:absolute;left:50%;bottom:calc(100% + 9px);
+    transform:translateX(-50%) translateY(4px) scale(.92);
+    display:inline-flex;align-items:center;gap:.32rem;white-space:nowrap;
+    font-family:var(--sans);font-size:.66rem;font-weight:600;color:var(--ink);
+    background:#fff;border:1px solid var(--hairline);border-radius:9px;padding:.3rem .54rem;
+    box-shadow:0 10px 22px rgba(20,22,26,.2);
+    opacity:0;visibility:hidden;pointer-events:none;z-index:6;
+    transition:opacity .26s var(--ease-q),transform .26s var(--ease-q),visibility .26s,box-shadow .12s}
+  .hb-docpop svg{width:.82rem;height:.82rem;color:var(--gold-deep)}
   /* clean bordered downward tail: border-triangle behind, white-triangle in front */
-  .hero-pop::before,.hero-pop::after{content:"";position:absolute;top:100%;left:50%;
-    width:0;height:0;border:7px solid transparent;transform:translateX(-50%)}
-  .hero-pop::before{border-top-color:var(--hairline)}
-  .hero-pop::after{border-width:6px;border-top-color:#fff;transform:translateX(-50%) translateY(-1.4px)}
-  .hero[data-hs="1"] .hero-pop,.hero[data-hs="2"] .hero-pop{
+  .hb-docpop::before,.hb-docpop::after{content:"";position:absolute;top:100%;left:50%;
+    width:0;height:0;border:6px solid transparent;transform:translateX(-50%)}
+  .hb-docpop::before{border-top-color:var(--hairline)}
+  .hb-docpop::after{border-width:5px;border-top-color:#fff;transform:translateX(-50%) translateY(-1.4px)}
+  .hero[data-hs="pop"] .hb-docpop,.hero[data-hs="write"] .hb-docpop{
     opacity:1;visibility:visible;transform:translateX(-50%)}
-  .hero[data-hs="1"] .hero-pop{animation:heroPulse 1.5s var(--ease-q) 2}
-  @keyframes heroPulse{0%,100%{box-shadow:0 10px 26px rgba(20,22,26,.18)}
-    50%{box-shadow:0 10px 26px rgba(20,22,26,.18),0 0 0 5px rgba(232,176,75,.2)}}
+  /* soft overshoot entrance: pops to ~1.2x then springs back to 1x */
+  .hero[data-hs="pop"] .hb-docpop{animation:hbPopOver .52s var(--ease-back)}
+  @keyframes hbPopOver{0%{opacity:0;transform:translateX(-50%) scale(.55)}
+    45%{opacity:1;transform:translateX(-50%) scale(1.2)}
+    72%{transform:translateX(-50%) scale(.95)}
+    100%{opacity:1;transform:translateX(-50%) scale(1)}}
+  .hb-docpop.is-clicking{transform:translateX(-50%) scale(.9)!important;
+    box-shadow:0 6px 14px rgba(20,22,26,.22),0 0 0 4px rgba(232,176,75,.28)}
   .sub{font-size:1.17rem;color:var(--dim);max-width:31em;margin:0 0 2rem}
   .sub b{color:var(--ink);font-weight:600}
 
@@ -142,7 +149,7 @@
   .hero-doc{position:relative;padding:1.15rem 1.25rem 1.35rem;min-height:15.5rem;
     display:flex;flex-direction:column;font-family:var(--serif);color:var(--paper-ink);
     transition:filter .65s var(--ease-quint),opacity .65s var(--ease-quint)}
-  .hero[data-hs="0"] .hero-doc,.hero[data-hs="1"] .hero-doc{
+  .hero[data-hs="rest"] .hero-doc{
     filter:blur(3.5px) saturate(.3);opacity:.4}
   .hero-h{font-weight:700;font-size:1.02rem;margin:0 0 .55rem}
   .hero-h .hash{font-family:var(--mono);font-size:.72rem;color:var(--paper-line-2);margin-right:.4rem}
@@ -151,11 +158,13 @@
     transition:background .45s var(--ease-q),color .45s var(--ease-q)}
   .hero-anchor .n{display:none}
   /* commented: the original span is highlighted amber */
-  .hero[data-hs="2"] .hero-anchor .o,.hero[data-hs="3"] .hero-anchor .o{background:var(--mark)}
+  .hero[data-hs="select"] .hero-anchor .o,.hero[data-hs="pop"] .hero-anchor .o,
+  .hero[data-hs="write"] .hero-anchor .o,.hero[data-hs="written"] .hero-anchor .o,
+  .hero[data-hs="handoff"] .hero-anchor .o{background:var(--mark)}
   /* resolved by the agent: strike the original, reveal the green edit */
-  .hero[data-hs="4"] .hero-anchor .o,.hero[data-hs="5"] .hero-anchor .o{
+  .hero[data-hs="resolve"] .hero-anchor .o,.hero[data-hs="term"] .hero-anchor .o{
     background:var(--red-soft);color:var(--red);text-decoration:line-through;text-decoration-color:#cf8d80}
-  .hero[data-hs="4"] .hero-anchor .n,.hero[data-hs="5"] .hero-anchor .n{
+  .hero[data-hs="resolve"] .hero-anchor .n,.hero[data-hs="term"] .hero-anchor .n{
     display:inline;background:#e6f0e3;color:var(--green-ink);margin-left:.3em}
 
   /* the note that lands in the file */
@@ -167,9 +176,19 @@
   .hero-card .who{font-family:var(--mono);font-size:.56rem;letter-spacing:.13em;
     display:block;margin:0 0 .2rem;color:var(--gold-deep)}
   .hero-card p{margin:0}
-  .hero[data-hs="2"] .hero-card,.hero[data-hs="3"] .hero-card,
-  .hero[data-hs="4"] .hero-card,.hero[data-hs="5"] .hero-card{
+  /* visible at rest/resolved (no-JS + reduced-motion fallback) and through the back half */
+  .hero[data-hs="written"] .hero-card,.hero[data-hs="handoff"] .hero-card,
+  .hero[data-hs="resolve"] .hero-card,.hero[data-hs="term"] .hero-card,
+  .hero-card.is-armed,.hero-card.is-writing,.hero-card.is-written{
     opacity:1;transform:none;visibility:visible}
+  /* the note is authored word-by-word: words default visible (fallback), the gesture
+     hides them via .is-authoring then reveals each in turn */
+  .hero-card.is-authoring .hb-text .w{opacity:0;transition:opacity .22s var(--ease-q)}
+  .hero-card.is-authoring .hb-text .w.on{opacity:1}
+  .hb-caret{display:inline-block;width:0;height:1em;background:var(--gold-deep);
+    vertical-align:-.14em;opacity:0}
+  .hero-card.is-armed .hb-caret{width:.46em;margin-right:.04em;opacity:1;
+    animation:blink 1.05s steps(1) infinite}
 
   /* action area: hand-off (the agent action) swaps to an "addressed" chip once resolved */
   .hero-act{align-self:stretch;position:relative;margin-top:auto;height:2.05rem}
@@ -180,19 +199,19 @@
     transition:opacity .4s var(--ease-q),transform .4s var(--ease-q),visibility .4s,
       background .15s,color .15s,border-color .15s}
   .hero-handoff svg{width:.85rem;height:.85rem}
-  .hero[data-hs="3"] .hero-handoff{opacity:1;transform:none;visibility:visible}
-  .hero[data-hs="3"] .hero-handoff.is-clicking{transform:scale(.95);
+  .hero[data-hs="handoff"] .hero-handoff{opacity:1;transform:none;visibility:visible}
+  .hero[data-hs="handoff"] .hero-handoff.is-clicking{transform:scale(.95);
     background:var(--green-deep);border-color:var(--green-deep);color:#fff}
   .hero-addressed{font-family:var(--mono);font-size:.62rem;letter-spacing:.09em;color:var(--green-deep);
     background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.38);border-radius:999px;
     padding:.34rem .72rem;opacity:0;visibility:hidden;transition:opacity .4s var(--ease-q),visibility .4s}
-  .hero[data-hs="4"] .hero-addressed,.hero[data-hs="5"] .hero-addressed{opacity:1;visibility:visible}
+  .hero[data-hs="resolve"] .hero-addressed,.hero[data-hs="term"] .hero-addressed{opacity:1;visibility:visible}
 
   /* terminal face: the agent reports back */
   .hero-term{position:absolute;inset:0;background:#1c1f26;border-radius:13px;
     display:flex;flex-direction:column;opacity:0;visibility:hidden;pointer-events:none;
     transition:opacity .55s var(--ease-quint),visibility .55s}
-  .hero[data-hs="5"] .hero-term{opacity:1;visibility:visible}
+  .hero[data-hs="term"] .hero-term{opacity:1;visibility:visible}
   .hero-tbar{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;
     border-bottom:1px solid rgba(255,255,255,.08)}
   .hero-tbar .winbtns i{background:rgba(255,255,255,.2)}
@@ -449,9 +468,9 @@
     .modal.is-closing .modal-scrim,.modal.is-closing .modal-card{animation:none}
     .hw-card,.hw-resolved,.hw-anchor .o,.hw-anchor .n{transition:none}
     .hw-caret,.hero-tcur{animation:none}
-    .hero-doc,.hero-card,.hero-handoff,.hero-addressed,.hero-pop,.hero-term,
-    .hero-anchor .o,.hero-anchor .n,.hero-replay,h1 .hl::before{transition:none}
-    .hero-pop{animation:none}
+    .hero-doc,.hero-card,.hero-handoff,.hero-addressed,.hb-docpop,.hero-term,
+    .hero-anchor .o,.hero-anchor .n,.hero-replay,h1 .hl::before,.hb-text .w{transition:none}
+    .hb-docpop,.hb-caret{animation:none}
   }
   @media(max-width:880px){
     .hero-in{grid-template-columns:1fr}
@@ -487,10 +506,10 @@
 
 <main id="top">
 
-  <div class="hero" data-hs="4">
+  <div class="hero" data-hs="resolve">
     <div class="shell hero-in">
       <div>
-        <h1>The <span class="hl-wrap"><span class="hl">review layer</span><span class="hero-pop" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Comment</span></span> for agent-written markdown.</h1>
+        <h1>The <span class="hl-wrap"><span class="hl">review layer</span></span> for agent-written markdown.</h1>
         <p class="sub">Your agent writes the doc.<br>You comment and suggest edits on the exact text.<br><b>Your agent reads every note, acts, and answers.</b></p>
         <div class="paste">
           <p class="cmd" id="install-cmd">Install Markwise for me with <code>npm i -g markwise</code>, then run <code>markwise agent-setup</code> and follow what it prints.</p>
@@ -509,9 +528,9 @@
           <div class="win-title"><span class="winbtns"><i></i><i></i><i></i></span>localhost &middot; launch-plan.md</div>
           <div class="hero-doc">
             <p class="hero-h"><span class="hash">##</span>Rollout</p>
-            <p class="hero-p">We will launch the partner beta in <span class="hero-anchor"><span class="o">Q4 2026</span><span class="n">H2 2026</span></span>, with mobile following in the new year.</p>
+            <p class="hero-p">We will launch the partner beta in <span class="hero-anchor"><span class="hb-docpop" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Comment</span><span class="o">Q4 2026</span><span class="n">H2 2026</span></span>, with mobile following in the new year.</p>
             <div class="hero-thread">
-              <div class="hero-card"><span class="who">YOU</span><p>We agreed H2, not Q4 - the partner beta cannot slip past summer.</p></div>
+              <div class="hero-card"><span class="who">YOU</span><p><span class="hb-text"><span class="hb-caret"></span><span class="w">We </span><span class="w">agreed </span><span class="w">H2, </span><span class="w">not </span><span class="w">Q4 </span><span class="w">- </span><span class="w">the </span><span class="w">partner </span><span class="w">beta </span><span class="w">cannot </span><span class="w">slip </span><span class="w">past </span><span class="w">summer.</span></span></p></div>
             </div>
             <div class="hero-act">
               <button class="hero-handoff" type="button" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Hand off to the agent</button>
@@ -900,23 +919,42 @@
     var wide = window.matchMedia('(min-width: 881px)').matches;
     var handoff = hero.querySelector('.hero-handoff');
     var replay = hero.querySelector('.hero-replay');
+    var card = hero.querySelector('.hero-card');
+    var docpop = hero.querySelector('.hb-docpop');
+    var words = [].slice.call(hero.querySelectorAll('.hb-text .w'));
     var timers = [];
-    function set(s){ hero.setAttribute('data-hs', String(s)); }
-    function clearAll(){ timers.forEach(clearTimeout); timers = []; if(handoff) handoff.classList.remove('is-clicking'); }
+    function set(s){ hero.setAttribute('data-hs', s); }
+    function arm(){ if(card){ card.className = 'hero-card is-authoring'; } words.forEach(function(w){ w.classList.remove('on'); }); }
+    function clearAll(){
+      timers.forEach(clearTimeout); timers = [];
+      if(handoff) handoff.classList.remove('is-clicking');
+      if(docpop) docpop.classList.remove('is-clicking');
+    }
     function play(){
       clearAll();
       if(replay) replay.classList.remove('show');
-      set(0);
-      timers.push(setTimeout(function(){ set(1); }, 500));    // highlighter sweeps in, bubble pops + pulses
-      timers.push(setTimeout(function(){ set(2); }, 1900));   // bubble activates: doc crystallizes, note lands
-      timers.push(setTimeout(function(){ set(3); }, 3300));   // hand-off chip appears
-      timers.push(setTimeout(function(){ if(handoff) handoff.classList.add('is-clicking'); }, 4450));
-      timers.push(setTimeout(function(){ if(handoff) handoff.classList.remove('is-clicking'); set(4); }, 4820)); // Q4 -> H2 resolves in the doc
-      timers.push(setTimeout(function(){ set(5); }, 6300));   // flip to terminal: addressed all comments
-      timers.push(setTimeout(function(){ if(replay) replay.classList.add('show'); }, 7000));
+      arm();                                                  // hide the note's words, ready to write them in
+      set('rest');
+      timers.push(setTimeout(function(){ set('select'); }, 500));   // doc crystallizes, marker sweeps, phrase selected
+      timers.push(setTimeout(function(){ set('pop'); }, 1250));     // comment bubble pops on the phrase (soft overshoot)
+      timers.push(setTimeout(function(){ if(docpop) docpop.classList.add('is-clicking'); }, 1900)); // bubble pressed - "clicked"
+      timers.push(setTimeout(function(){ set('write'); if(card) card.classList.add('is-armed'); }, 2150)); // caret blinks, ready to type
+      timers.push(setTimeout(function(){
+        if(card){ card.classList.remove('is-armed'); card.classList.add('is-writing'); }
+        set('written');                                            // bubble dismissed; the note writes itself in
+        words.forEach(function(w,i){ timers.push(setTimeout(function(){ w.classList.add('on'); }, i*52)); });
+      }, 2600));
+      var writeEnd = 2600 + words.length*52 + 240;
+      timers.push(setTimeout(function(){ if(card){ card.classList.remove('is-writing'); card.classList.add('is-written'); } }, writeEnd));
+      var hoAt = Math.max(3600, writeEnd + 260);
+      timers.push(setTimeout(function(){ set('handoff'); }, hoAt));                                          // hand-off chip appears
+      timers.push(setTimeout(function(){ if(handoff) handoff.classList.add('is-clicking'); }, hoAt + 1150));
+      timers.push(setTimeout(function(){ if(handoff) handoff.classList.remove('is-clicking'); set('resolve'); }, hoAt + 1520)); // Q4 -> H2 resolves in the doc
+      timers.push(setTimeout(function(){ set('term'); }, hoAt + 3000));                                      // flip to terminal: addressed all comments
+      timers.push(setTimeout(function(){ if(replay) replay.classList.add('show'); }, hoAt + 3700));
     }
     if(!reduced && wide && 'IntersectionObserver' in window){
-      set(0); // start at rest, avoids a flash of the default resolved frame
+      arm(); set('rest'); // start at rest, avoids a flash of the default resolved frame
       var played = false;
       var io = new IntersectionObserver(function(es){
         es.forEach(function(e){ if(e.isIntersecting && !played){ played = true; play(); } });
@@ -924,7 +962,7 @@
       io.observe(hero);
       if(replay) replay.addEventListener('click', play);
     }
-    // else: keep the HTML default data-hs="4" (resolved doc, complete without JS)
+    // else: keep the HTML default data-hs="resolve" (resolved doc, comment fully written, complete without JS)
   })();
 </script>
 </body>
