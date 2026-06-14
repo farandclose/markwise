@@ -93,32 +93,44 @@
     background-size:100% 100%;clip-path:inset(0 0 0 0);
     transition:clip-path .7s var(--ease-quint)}
   .hl-wrap{position:relative;white-space:nowrap}
-  .hero[data-hs="rest"] h1 .hl::before{clip-path:inset(0 100% 0 0)}
-  /* the comment affordance now pops on the anchored phrase, inside the doc */
+  /* highlight: full by default (fallback). While animating it starts hidden, then sweeps. */
+  .hero.is-animating h1 .hl::before{clip-path:inset(0 100% 0 0)}
+  .hero.is-animating.swept h1 .hl::before{clip-path:inset(0 0 0 0)}
+
+  /* narrated captions live above the scene DURING the animation. The real value-prop
+     subhead (.sub) stays in the DOM and shows whenever we are NOT animating. */
+  .hero.is-animating .sub{display:none}
+  .hero-caption{display:none}
+  .hero.is-animating .hero-caption{display:block;position:relative;width:min(100%,460px);
+    min-height:2.7rem;margin:0 0 1rem}
+  .hcap{position:absolute;left:0;bottom:0;width:100%;
+    font-family:var(--sans);font-size:1.04rem;line-height:1.36;font-weight:600;color:var(--ink);
+    opacity:0;transform:translateY(8px);
+    transition:opacity .45s var(--ease-q),transform .45s var(--ease-q)}
+  .hcap.on{opacity:1;transform:none}
+
+  /* the comment affordance pops on the anchored phrase, inside the doc */
   .hero-anchor{position:relative}
-  .hb-docpop{position:absolute;left:50%;bottom:calc(100% + 9px);
-    transform:translateX(-50%) translateY(4px) scale(.92);
+  .hb-docpop{position:absolute;left:50%;bottom:calc(100% + 9px);transform:translateX(-50%);
     display:inline-flex;align-items:center;gap:.32rem;white-space:nowrap;
     font-family:var(--sans);font-size:.66rem;font-weight:600;color:var(--ink);
     background:#fff;border:1px solid var(--hairline);border-radius:9px;padding:.3rem .54rem;
     box-shadow:0 10px 22px rgba(20,22,26,.2);
     opacity:0;visibility:hidden;pointer-events:none;z-index:6;
-    transition:opacity .26s var(--ease-q),transform .26s var(--ease-q),visibility .26s,box-shadow .12s}
+    transition:transform .12s var(--ease-q),box-shadow .12s var(--ease-q)}
   .hb-docpop svg{width:.82rem;height:.82rem;color:var(--gold-deep)}
   /* clean bordered downward tail: border-triangle behind, white-triangle in front */
   .hb-docpop::before,.hb-docpop::after{content:"";position:absolute;top:100%;left:50%;
     width:0;height:0;border:6px solid transparent;transform:translateX(-50%)}
   .hb-docpop::before{border-top-color:var(--hairline)}
   .hb-docpop::after{border-width:5px;border-top-color:#fff;transform:translateX(-50%) translateY(-1.4px)}
-  .hero[data-hs="pop"] .hb-docpop,.hero[data-hs="write"] .hb-docpop{
-    opacity:1;visibility:visible;transform:translateX(-50%)}
+  .hb-docpop.show{opacity:1;visibility:visible;animation:hbPopOver .52s var(--ease-back)}
   /* soft overshoot entrance: pops to ~1.2x then springs back to 1x */
-  .hero[data-hs="pop"] .hb-docpop{animation:hbPopOver .52s var(--ease-back)}
   @keyframes hbPopOver{0%{opacity:0;transform:translateX(-50%) scale(.55)}
     45%{opacity:1;transform:translateX(-50%) scale(1.2)}
     72%{transform:translateX(-50%) scale(.95)}
     100%{opacity:1;transform:translateX(-50%) scale(1)}}
-  .hb-docpop.is-clicking{transform:translateX(-50%) scale(.9)!important;
+  .hb-docpop.is-clicking{transform:translateX(-50%) scale(.9);
     box-shadow:0 6px 14px rgba(20,22,26,.22),0 0 0 4px rgba(232,176,75,.28)}
   .sub{font-size:1.17rem;color:var(--dim);max-width:31em;margin:0 0 2rem}
   .sub b{color:var(--ink);font-weight:600}
@@ -144,74 +156,69 @@
     font-family:var(--mono);font-size:.68rem;letter-spacing:.06em}
   .hero-win .win-title{color:var(--dim);background:var(--stage-3);
     border-bottom:1px solid var(--hairline-soft)}
+  /* the curtain: blur lives on the screen stack so chrome/shadow stay crisp; screen
+     swaps happen WHILE engaged, hidden from the viewer */
+  .hero-screen{position:relative;transition:filter .5s var(--ease-quint)}
+  .hero-win.curtain .hero-screen{filter:blur(7px) saturate(.5)}
 
-  /* document face: ghosted at rest, then crystallizes into a real file */
+  /* document face */
   .hero-doc{position:relative;padding:1.15rem 1.25rem 1.35rem;min-height:15.5rem;
-    display:flex;flex-direction:column;font-family:var(--serif);color:var(--paper-ink);
-    transition:filter .65s var(--ease-quint),opacity .65s var(--ease-quint)}
-  .hero[data-hs="rest"] .hero-doc{
-    filter:blur(3.5px) saturate(.3);opacity:.4}
+    display:flex;flex-direction:column;font-family:var(--serif);color:var(--paper-ink)}
   .hero-h{font-weight:700;font-size:1.02rem;margin:0 0 .55rem}
   .hero-h .hash{font-family:var(--mono);font-size:.72rem;color:var(--paper-line-2);margin-right:.4rem}
   .hero-p{font-size:.95rem;line-height:1.72;margin:0}
   .hero-anchor .o,.hero-anchor .n{border-radius:3px;padding:0 .1em;
     transition:background .45s var(--ease-q),color .45s var(--ease-q)}
   .hero-anchor .n{display:none}
-  /* commented: the original span is highlighted amber */
-  .hero[data-hs="select"] .hero-anchor .o,.hero[data-hs="pop"] .hero-anchor .o,
-  .hero[data-hs="write"] .hero-anchor .o,.hero[data-hs="written"] .hero-anchor .o,
-  .hero[data-hs="handoff"] .hero-anchor .o{background:var(--mark)}
-  /* resolved by the agent: strike the original, reveal the green edit */
-  .hero[data-hs="resolve"] .hero-anchor .o,.hero[data-hs="term"] .hero-anchor .o{
-    background:var(--red-soft);color:var(--red);text-decoration:line-through;text-decoration-color:#cf8d80}
-  .hero[data-hs="resolve"] .hero-anchor .n,.hero[data-hs="term"] .hero-anchor .n{
-    display:inline;background:#e6f0e3;color:var(--green-ink);margin-left:.3em}
+  /* commented: amber while the note is open */
+  .hero-win[data-doc="commenting"] .hero-anchor .o{background:var(--mark)}
+  /* resolved: strike the original, reveal the green edit (instant - happens behind the curtain) */
+  .hero-win[data-doc="resolved"] .hero-anchor .o{background:var(--red-soft);color:var(--red);
+    text-decoration:line-through;text-decoration-color:#cf8d80;transition:none}
+  .hero-win[data-doc="resolved"] .hero-anchor .n{display:inline;background:#e6f0e3;color:var(--green-ink);margin-left:.3em}
 
-  /* the note that lands in the file */
+  /* the note that lands in the file. Visible by default (no-JS + reduced-motion fallback);
+     the gesture hides it (.is-animating, no .show) then brings it in. */
   .hero-thread{margin-top:1.05rem}
   .hero-card{background:var(--stage-3);border:1px solid var(--hairline);border-radius:10px;
-    padding:.5rem .72rem;font-family:var(--sans);font-size:.82rem;line-height:1.5;color:var(--text);
-    opacity:0;transform:translateY(8px);visibility:hidden;
-    transition:opacity .45s var(--ease-q),transform .45s var(--ease-q),visibility .45s}
+    padding:.5rem .72rem;font-family:var(--sans);font-size:.82rem;line-height:1.5;color:var(--text)}
   .hero-card .who{font-family:var(--mono);font-size:.56rem;letter-spacing:.13em;
     display:block;margin:0 0 .2rem;color:var(--gold-deep)}
   .hero-card p{margin:0}
-  /* visible at rest/resolved (no-JS + reduced-motion fallback) and through the back half */
-  .hero[data-hs="written"] .hero-card,.hero[data-hs="handoff"] .hero-card,
-  .hero[data-hs="resolve"] .hero-card,.hero[data-hs="term"] .hero-card,
-  .hero-card.is-armed,.hero-card.is-writing,.hero-card.is-written{
-    opacity:1;transform:none;visibility:visible}
-  /* the note is authored word-by-word: words default visible (fallback), the gesture
-     hides them via .is-authoring then reveals each in turn */
-  .hero-card.is-authoring .hb-text .w{opacity:0;transition:opacity .22s var(--ease-q)}
-  .hero-card.is-authoring .hb-text .w.on{opacity:1}
+  .hero.is-animating .hero-card{opacity:0;transform:translateY(8px);visibility:hidden;
+    transition:opacity .45s var(--ease-q),transform .45s var(--ease-q),visibility .45s}
+  .hero.is-animating .hero-card.show{opacity:1;transform:none;visibility:visible}
+  /* words default visible (fallback); the gesture hides them then reveals each in turn */
+  .hero-card .hb-text .w{opacity:1}
+  .hero.is-animating .hero-card.is-authoring .hb-text .w{opacity:0;transition:opacity .22s var(--ease-q)}
+  .hero.is-animating .hero-card.is-authoring .hb-text .w.on{opacity:1}
   .hb-caret{display:inline-block;width:0;height:1em;background:var(--gold-deep);
     vertical-align:-.14em;opacity:0}
   .hero-card.is-armed .hb-caret{width:.46em;margin-right:.04em;opacity:1;
     animation:blink 1.05s steps(1) infinite}
 
-  /* action area: hand-off (the agent action) swaps to an "addressed" chip once resolved */
+  /* action area: hand-off (visible during clean/commenting) swaps to an "addressed" chip when resolved */
   .hero-act{align-self:stretch;position:relative;margin-top:auto;height:2.05rem}
   .hero-handoff,.hero-addressed{position:absolute;right:0;bottom:0;display:inline-flex;align-items:center;gap:.4rem}
   .hero-handoff{font-family:var(--sans);font-size:.74rem;font-weight:600;color:var(--green-deep);
     background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.42);border-radius:8px;
     padding:.42rem .8rem;cursor:default;opacity:0;transform:translateY(6px);visibility:hidden;
-    transition:opacity .4s var(--ease-q),transform .4s var(--ease-q),visibility .4s,
+    transition:opacity .4s var(--ease-q),transform .12s var(--ease-q),visibility .4s,
       background .15s,color .15s,border-color .15s}
   .hero-handoff svg{width:.85rem;height:.85rem}
-  .hero[data-hs="handoff"] .hero-handoff{opacity:1;transform:none;visibility:visible}
-  .hero[data-hs="handoff"] .hero-handoff.is-clicking{transform:scale(.95);
+  .hero-win[data-doc="clean"] .hero-handoff,.hero-win[data-doc="commenting"] .hero-handoff{
+    opacity:1;transform:none;visibility:visible}
+  .hero-handoff.is-clicking{transform:scale(.95);
     background:var(--green-deep);border-color:var(--green-deep);color:#fff}
   .hero-addressed{font-family:var(--mono);font-size:.62rem;letter-spacing:.09em;color:var(--green-deep);
     background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.38);border-radius:999px;
     padding:.34rem .72rem;opacity:0;visibility:hidden;transition:opacity .4s var(--ease-q),visibility .4s}
-  .hero[data-hs="resolve"] .hero-addressed,.hero[data-hs="term"] .hero-addressed{opacity:1;visibility:visible}
+  .hero-win[data-doc="resolved"] .hero-addressed{opacity:1;visibility:visible}
 
-  /* terminal face: the agent reports back */
+  /* terminal face: overlays the doc. Shown/hidden INSTANTLY - the swap is always masked by the curtain. */
   .hero-term{position:absolute;inset:0;background:#1c1f26;border-radius:13px;
-    display:flex;flex-direction:column;opacity:0;visibility:hidden;pointer-events:none;
-    transition:opacity .55s var(--ease-quint),visibility .55s}
-  .hero[data-hs="term"] .hero-term{opacity:1;visibility:visible}
+    display:flex;flex-direction:column;z-index:5;visibility:hidden}
+  .hero-win.term-up .hero-term{visibility:visible}
   .hero-tbar{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;
     border-bottom:1px solid rgba(255,255,255,.08)}
   .hero-tbar .winbtns i{background:rgba(255,255,255,.2)}
@@ -223,6 +230,11 @@
   .hero-tl b{font-weight:500;color:var(--gold)}
   .hero-tcur{display:inline-block;width:.5em;height:1.05em;background:var(--term-ink);
     vertical-align:-.18em;margin-left:.1rem;animation:blink 1.1s steps(1) infinite}
+  /* terminal content swaps by phase: drafting -> ready -> addressed */
+  .hero-tg-write,.hero-tg-ready,.hero-tg-done{display:none}
+  .hero-term[data-tc="write"] .hero-tg-write{display:block}
+  .hero-term[data-tc="ready"] .hero-tg-ready{display:block}
+  .hero-term[data-tc="done"] .hero-tg-done{display:block}
 
   /* replay control: appears once the gesture has played through */
   .hero-replay{margin-top:1.15rem;display:inline-flex;align-items:center;gap:.35rem;
@@ -468,9 +480,9 @@
     .modal.is-closing .modal-scrim,.modal.is-closing .modal-card{animation:none}
     .hw-card,.hw-resolved,.hw-anchor .o,.hw-anchor .n{transition:none}
     .hw-caret,.hero-tcur{animation:none}
-    .hero-doc,.hero-card,.hero-handoff,.hero-addressed,.hb-docpop,.hero-term,
-    .hero-anchor .o,.hero-anchor .n,.hero-replay,h1 .hl::before,.hb-text .w{transition:none}
-    .hb-docpop,.hb-caret{animation:none}
+    .hero-doc,.hero-screen,.hero-card,.hero-handoff,.hero-addressed,.hb-docpop,.hero-term,
+    .hero-anchor .o,.hero-anchor .n,.hero-replay,.hcap,h1 .hl::before,.hb-text .w{transition:none}
+    .hb-docpop,.hb-caret,.hero-tcur{animation:none}
   }
   @media(max-width:880px){
     .hero-in{grid-template-columns:1fr}
@@ -506,7 +518,7 @@
 
 <main id="top">
 
-  <div class="hero" data-hs="resolve">
+  <div class="hero">
     <div class="shell hero-in">
       <div>
         <h1>The <span class="hl-wrap"><span class="hl">review layer</span></span> for agent-written markdown.</h1>
@@ -524,24 +536,33 @@
         </div>
       </div>
       <div class="scenebox">
-        <div class="hero-win" aria-hidden="true">
-          <div class="win-title"><span class="winbtns"><i></i><i></i><i></i></span>localhost &middot; launch-plan.md</div>
-          <div class="hero-doc">
-            <p class="hero-h"><span class="hash">##</span>Rollout</p>
-            <p class="hero-p">We will launch the partner beta in <span class="hero-anchor"><span class="hb-docpop" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Comment</span><span class="o">Q4 2026</span><span class="n">H2 2026</span></span>, with mobile following in the new year.</p>
-            <div class="hero-thread">
-              <div class="hero-card"><span class="who">YOU</span><p><span class="hb-text"><span class="hb-caret"></span><span class="w">We </span><span class="w">agreed </span><span class="w">H2, </span><span class="w">not </span><span class="w">Q4 </span><span class="w">- </span><span class="w">the </span><span class="w">partner </span><span class="w">beta </span><span class="w">cannot </span><span class="w">slip </span><span class="w">past </span><span class="w">summer.</span></span></p></div>
+        <div class="hero-caption" aria-hidden="true">
+          <span class="hcap" data-i="0">Your agent writes the doc.</span>
+          <span class="hcap" data-i="1">You comment and suggest edits on the exact text.</span>
+          <span class="hcap" data-i="2">Your agent reads every note, acts, and answers.</span>
+        </div>
+        <div class="hero-win" data-doc="resolved" aria-hidden="true">
+          <div class="hero-screen">
+            <div class="win-title"><span class="winbtns"><i></i><i></i><i></i></span>localhost &middot; launch-plan.md</div>
+            <div class="hero-doc">
+              <p class="hero-h"><span class="hash">##</span>Rollout</p>
+              <p class="hero-p">We will launch the partner beta in <span class="hero-anchor"><span class="hb-docpop" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Comment</span><span class="o">Q4 2026</span><span class="n">H2 2026</span></span>, with mobile following in the new year.</p>
+              <div class="hero-thread">
+                <div class="hero-card"><span class="who">YOU</span><p><span class="hb-text"><span class="hb-caret"></span><span class="w">We </span><span class="w">agreed </span><span class="w">H2, </span><span class="w">not </span><span class="w">Q4 - </span><span class="w">the </span><span class="w">partner </span><span class="w">beta </span><span class="w">cannot </span><span class="w">slip </span><span class="w">past </span><span class="w">summer.</span></span></p></div>
+              </div>
+              <div class="hero-act">
+                <button class="hero-handoff" type="button" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Hand off to the agent</button>
+                <span class="hero-addressed">&#10003; Addressed by the agent</span>
+              </div>
             </div>
-            <div class="hero-act">
-              <button class="hero-handoff" type="button" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Hand off to the agent</button>
-              <span class="hero-addressed">&#10003; Addressed by the agent</span>
-            </div>
-          </div>
-          <div class="hero-term">
-            <div class="hero-tbar"><span class="winbtns"><i></i><i></i><i></i></span><span class="hero-tapp">Claude Code</span></div>
-            <div class="hero-tbody">
-              <p class="hero-tl"><i>&#9210;</i>Read 1 note on <b>launch-plan.md</b></p>
-              <p class="hero-tl"><i>&#10003;</i>Addressed all comments.<span class="hero-tcur"></span></p>
+            <div class="hero-term" data-tc="done">
+              <div class="hero-tbar"><span class="winbtns"><i></i><i></i><i></i></span><span class="hero-tapp">Claude Code</span></div>
+              <div class="hero-tbody">
+                <p class="hero-tl hero-tg-write"><i>&#9210;</i>Drafting <b>launch-plan.md</b><span class="hero-tcur"></span></p>
+                <p class="hero-tl hero-tg-ready"><i>&#10038;</i><b>launch-plan.md</b> is ready for review.<span class="hero-tcur"></span></p>
+                <p class="hero-tl hero-tg-done"><i>&#9210;</i>Read 1 note on <b>launch-plan.md</b></p>
+                <p class="hero-tl hero-tg-done"><i>&#10003;</i>Addressed all comments.<span class="hero-tcur"></span></p>
+              </div>
             </div>
           </div>
         </div>
@@ -911,50 +932,88 @@
     }
   })();
 
-  // hero gesture: comment -> agent resolves the edit -> terminal handshake. Plays once in view, replayable.
+  // hero gesture: narrated self-demo. One IDEA at a time, the caption leads - the scene and
+  // its caption enter/leave together; the blur is the backstage where screens swap.
+  // Plays once in view, replayable. Falls back to the static subhead + resolved doc.
   (function(){
     var hero = document.querySelector('.hero');
     if(!hero) return;
     var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var wide = window.matchMedia('(min-width: 881px)').matches;
+    var win = hero.querySelector('.hero-win');
+    var term = hero.querySelector('.hero-term');
+    var docpop = hero.querySelector('.hb-docpop');
+    var card = hero.querySelector('.hero-card');
+    var words = [].slice.call(hero.querySelectorAll('.hb-text .w'));
+    var caps = [].slice.call(hero.querySelectorAll('.hcap'));
     var handoff = hero.querySelector('.hero-handoff');
     var replay = hero.querySelector('.hero-replay');
-    var card = hero.querySelector('.hero-card');
-    var docpop = hero.querySelector('.hb-docpop');
-    var words = [].slice.call(hero.querySelectorAll('.hb-text .w'));
     var timers = [];
-    function set(s){ hero.setAttribute('data-hs', s); }
-    function arm(){ if(card){ card.className = 'hero-card is-authoring'; } words.forEach(function(w){ w.classList.remove('on'); }); }
-    function clearAll(){
+
+    function at(ms, fn){ timers.push(setTimeout(fn, ms)); }
+    function cap(i){ caps.forEach(function(c,j){ c.classList.toggle('on', j===i); }); }
+    function capOut(){ caps.forEach(function(c){ c.classList.remove('on'); }); }
+
+    function arm(){
       timers.forEach(clearTimeout); timers = [];
-      if(handoff) handoff.classList.remove('is-clicking');
-      if(docpop) docpop.classList.remove('is-clicking');
+      hero.classList.add('is-animating');
+      hero.classList.remove('swept');
+      win.className = 'hero-win curtain term-up';   // open on a blurred terminal
+      win.setAttribute('data-doc', 'clean');
+      term.setAttribute('data-tc', 'write');        // ...drafting
+      caps.forEach(function(c){ c.classList.remove('on'); });
+      if(card){ card.className = 'hero-card is-authoring'; }
+      words.forEach(function(w){ w.classList.remove('on'); });
+      if(docpop){ docpop.classList.remove('show', 'is-clicking'); }
+      if(handoff){ handoff.classList.remove('is-clicking'); }
+      if(replay){ replay.classList.remove('show'); }
     }
+
     function play(){
-      clearAll();
-      if(replay) replay.classList.remove('show');
-      arm();                                                  // hide the note's words, ready to write them in
-      set('rest');
-      timers.push(setTimeout(function(){ set('select'); }, 500));   // doc crystallizes, marker sweeps, phrase selected
-      timers.push(setTimeout(function(){ set('pop'); }, 1250));     // comment bubble pops on the phrase (soft overshoot)
-      timers.push(setTimeout(function(){ if(docpop) docpop.classList.add('is-clicking'); }, 1900)); // bubble pressed - "clicked"
-      timers.push(setTimeout(function(){ set('write'); if(card) card.classList.add('is-armed'); }, 2150)); // caret blinks, ready to type
-      timers.push(setTimeout(function(){
-        if(card){ card.classList.remove('is-armed'); card.classList.add('is-writing'); }
-        set('written');                                            // bubble dismissed; the note writes itself in
-        words.forEach(function(w,i){ timers.push(setTimeout(function(){ w.classList.add('on'); }, i*52)); });
-      }, 2600));
-      var writeEnd = 2600 + words.length*52 + 240;
-      timers.push(setTimeout(function(){ if(card){ card.classList.remove('is-writing'); card.classList.add('is-written'); } }, writeEnd));
-      var hoAt = Math.max(3600, writeEnd + 260);
-      timers.push(setTimeout(function(){ set('handoff'); }, hoAt));                                          // hand-off chip appears
-      timers.push(setTimeout(function(){ if(handoff) handoff.classList.add('is-clicking'); }, hoAt + 1150));
-      timers.push(setTimeout(function(){ if(handoff) handoff.classList.remove('is-clicking'); set('resolve'); }, hoAt + 1520)); // Q4 -> H2 resolves in the doc
-      timers.push(setTimeout(function(){ set('term'); }, hoAt + 3000));                                      // flip to terminal: addressed all comments
-      timers.push(setTimeout(function(){ if(replay) replay.classList.add('show'); }, hoAt + 3700));
+      arm();
+
+      // PRE-ROLL: the marker sweeps on the left, alone (right held as a blurred terminal)
+      at(500,  function(){ hero.classList.add('swept'); });
+
+      // ACT 1 enter: C1 leads (read), THEN the terminal reveals
+      at(1450, function(){ cap(0); });
+      at(2400, function(){ term.setAttribute('data-tc','ready'); });
+      at(2600, function(){ win.classList.remove('curtain'); });
+
+      // 1 -> 2 (terminal -> doc): scene + caption leave together, new caption read, then reveal
+      at(4300, function(){ win.classList.add('curtain'); capOut(); });
+      at(4900, function(){ win.classList.remove('term-up'); });
+      at(5150, function(){ cap(1); });
+      at(6300, function(){ win.classList.remove('curtain'); });
+
+      // ACT 2: you comment (one causal chain under C2)
+      at(7200, function(){ win.setAttribute('data-doc','commenting'); });
+      at(7900, function(){ if(docpop) docpop.classList.add('show'); });
+      at(8450, function(){ if(docpop) docpop.classList.add('is-clicking'); });
+      at(8800, function(){ if(docpop) docpop.classList.remove('show','is-clicking'); if(card) card.classList.add('show','is-armed'); });
+      at(9200, function(){ if(card) card.classList.remove('is-armed'); });
+      words.forEach(function(w,i){ at(9200 + i*70, function(){ w.classList.add('on'); }); });
+      var writeEnd = 9200 + words.length*70 + 300;
+
+      // hand-off press: the final crisp beat of ACT 2 (still you, under C2)
+      var pressAt = writeEnd + 650;
+      at(pressAt, function(){ if(handoff) handoff.classList.add('is-clicking'); });
+
+      // 2 -> 3 (doc -> terminal addressing)
+      at(pressAt + 500,  function(){ win.classList.add('curtain'); capOut(); });
+      at(pressAt + 1100, function(){ win.classList.add('term-up'); term.setAttribute('data-tc','done'); if(handoff) handoff.classList.remove('is-clicking'); });
+      at(pressAt + 1350, function(){ cap(2); });
+      at(pressAt + 2500, function(){ win.classList.remove('curtain'); });
+
+      // ACT 3 sub-switch (terminal -> resolved doc): same idea, C3 stays, no caption change
+      at(pressAt + 4250, function(){ win.classList.add('curtain'); });
+      at(pressAt + 4850, function(){ win.classList.remove('term-up'); win.setAttribute('data-doc','resolved'); });
+      at(pressAt + 5100, function(){ win.classList.remove('curtain'); });
+      at(pressAt + 5800, function(){ if(replay) replay.classList.add('show'); });
     }
+
     if(!reduced && wide && 'IntersectionObserver' in window){
-      arm(); set('rest'); // start at rest, avoids a flash of the default resolved frame
+      arm();   // show the start frame immediately, avoids a flash of the resolved fallback
       var played = false;
       var io = new IntersectionObserver(function(es){
         es.forEach(function(e){ if(e.isIntersecting && !played){ played = true; play(); } });
@@ -962,7 +1021,7 @@
       io.observe(hero);
       if(replay) replay.addEventListener('click', play);
     }
-    // else: keep the HTML default data-hs="resolve" (resolved doc, comment fully written, complete without JS)
+    // else: leave the HTML fallback (no .is-animating) - static .sub subhead + resolved doc.
   })();
 </script>
 </body>
