@@ -88,7 +88,7 @@
     line-height:1.03;letter-spacing:-.035em;margin:0 0 1.25rem;color:var(--ink)}
   h1 .hl{position:relative;z-index:0}
   h1 .hl::before{content:"";position:absolute;z-index:-1;
-    left:-.2em;right:-.2em;top:-.12em;bottom:.05em;
+    left:-.2em;right:-.2em;top:-.04em;bottom:-.08em;
     background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 48' preserveAspectRatio='none'%3E%3Cpath d='M5 25 C2 16 9 11 21 9 C70 5 130 7 182 10 C193 11 199 17 196 26 C194 34 198 41 183 42 C130 45 70 44 18 41 C7 40 2 33 5 25 Z' fill='%23e8b04b' fill-opacity='0.42'/%3E%3C/svg%3E") no-repeat;
     background-size:100% 100%;clip-path:inset(0 0 0 0);
     transition:clip-path .7s var(--ease-quint)}
@@ -146,6 +146,14 @@
   .paste-row .hint{font-size:.9rem;color:var(--dim);margin:0}
   .copy-note{font-size:.82rem;color:var(--gold-deep);margin:.5rem 0 0;min-height:1.2em}
   .hero-links{display:flex;gap:.7rem;margin-top:1rem}
+  /* hero CTA card: the framing leads, the prompt is the payload, the action stays quiet+tonal */
+  .paste-cta .paste-frame{font-family:var(--sans);font-size:.9rem;font-weight:600;
+    line-height:1.5;color:var(--ink);margin:0 0 .55rem}
+  .paste-cta .cmd{font-size:.9rem}
+  .paste-cta .paste-row{justify-content:flex-end}
+  .btn-soft{background:var(--stage-3);border:1px solid var(--hairline);color:var(--ink);font-size:.9rem}
+  .btn-soft:hover{background:#e9eaec;border-color:rgba(20,22,26,.22)}
+  .btn-soft.ok{background:var(--green-deep);border-color:var(--green-deep);color:#fff}
 
   /* hero scene: a note lands in a real file, then the agent answers */
   .scenebox{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:480px;min-width:0}
@@ -523,16 +531,13 @@
       <div>
         <h1>The <span class="hl-wrap"><span class="hl">review layer</span></span> for agent-written markdown.</h1>
         <p class="sub">Your agent writes the doc.<br>You comment and suggest edits on the exact text.<br><b>Your agent reads every note, acts, and answers.</b></p>
-        <div class="paste">
+        <div class="paste paste-cta">
+          <p class="paste-frame">Paste this prompt into Claude Code, Codex, or any coding agent.</p>
           <p class="cmd" id="install-cmd">Install Markwise for me with <code>npm i -g markwise</code>, then run <code>markwise agent-setup</code> and follow what it prints.</p>
           <div class="paste-row">
-            <p class="hint">Paste this into Claude Code, Codex, or any coding agent.</p>
-            <button class="btn btn-primary jsonly" type="button" data-copy>Copy</button>
+            <button class="btn btn-soft jsonly" type="button" data-copy>Copy prompt</button>
           </div>
           <p class="copy-note" aria-live="polite" data-copy-note></p>
-        </div>
-        <div class="hero-links">
-          <a class="btn btn-ghost" href="https://github.com/farandclose/markwise">View on GitHub</a>
         </div>
       </div>
       <div class="scenebox">
