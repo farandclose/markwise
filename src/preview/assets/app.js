@@ -32,6 +32,19 @@
     });
   }
 
+  // From a composer textarea, send a plain Tab straight to the primary action. Browser defaults
+  // would otherwise step to the next DOM node (e.g. Cancel) or - in Safari, which keeps buttons
+  // out of the Tab cycle - leave the page for the URL bar. Calling focus() ourselves makes the
+  // jump identical everywhere. Shift+Tab is left alone so the secondary action stays reachable.
+  function tabToPrimary(textarea, primaryBtn) {
+    textarea.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        primaryBtn.focus();
+      }
+    });
+  }
+
   // ---- Synthetic caret (Op2) ------------------------------------------------------------------
   // An overlay bar that shows where the collapsed selection sits in the prose. It never enters
   // the text flow (position:absolute in .mw-doc, pointer-events:none), so the document cannot
@@ -334,6 +347,8 @@
             .finally(function () { resolveBtn.disabled = false; });
         }, reduce ? 0 : 200);
       });
+
+      tabToPrimary(ta, replyBtn);
 
       verbs.appendChild(replyBtn);
       verbs.appendChild(resolveBtn);
@@ -865,6 +880,8 @@
           add.disabled = false;
         });
     });
+
+    tabToPrimary(ta, add);
 
     actions.appendChild(cancel);
     actions.appendChild(add);

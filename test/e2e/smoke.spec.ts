@@ -128,6 +128,32 @@ test('discard removes the note without archiving and restores the prose', async 
   expect(onDisk).toContain('Ships by Q3.');
 });
 
+test('Tab from the comment textarea moves focus to the Add button', async ({ page }) => {
+  // Reviewers compose a comment then reach for the primary action with Tab. Browser defaults send
+  // Tab to the next DOM node (Cancel) or - in Safari, which skips buttons - out to the URL bar.
+  // The composer should keep keyboard focus on the page and land it on Add.
+  await page.goto(await serve(PROSE));
+  await page.locator('.mw-doc').getByText('Replaceme').dblclick();
+  await page.locator('.mw-pill').click();
+  const ta = page.locator('.mw-draft textarea');
+  await ta.fill('comment is written');
+  await ta.press('Tab');
+  await expect(page.locator('.mw-draft-add')).toBeFocused();
+});
+
+test('Tab from the reply textarea moves focus to the Reply button', async ({ page }) => {
+  // Same intent for the per-note reply composer: Tab lands on the primary action (Reply), not on
+  // Resolve and not off the page. (Chromium already tabs to Reply by DOM order; this guards the
+  // intent against a future reorder and matches the explicit handler that fixes Safari.)
+  await page.goto(await serve(NOTED));
+  await page.locator('.mw-counter').click(); // leave clean reading mode: reveal the notes rail
+  await page.locator('.mw-card').click(); // activate: the reply composer is live on the active card
+  const ta = page.locator('.mw-reply');
+  await ta.fill('a reply');
+  await ta.press('Tab');
+  await expect(page.locator('.mw-reply-btn')).toBeFocused();
+});
+
 test('a stale tab cannot mis-anchor a note: the write is refused and the view refreshes', async ({ page }) => {
   await page.goto(await serve(PROSE));
   // Hold a selection made against the old render...
