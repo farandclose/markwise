@@ -418,7 +418,14 @@ function main(): void {
   if (args.command === 'prompt') {
     if (args.wait) {
       // Long-running until the human hands off; resolve asynchronously, do not exit synchronously.
-      promptWaitCommand(args).then((code) => process.exit(code));
+      // Map any unexpected rejection to a clean non-zero exit so the launching agent never sees an
+      // unhandled rejection instead of a deterministic exit code.
+      promptWaitCommand(args)
+        .then((code) => process.exit(code))
+        .catch((err) => {
+          process.stderr.write(`markwise prompt --wait: ${(err as Error).message}\n`);
+          process.exit(1);
+        });
       return;
     }
     process.exit(promptCommand(args));

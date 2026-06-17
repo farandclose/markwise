@@ -25,7 +25,9 @@ export function rendezvousPath(file: string): string {
 
 export function writeRendezvous(file: string, info: { port: number; pid: number }): void {
   const data: Rendezvous = { port: info.port, pid: info.pid, file: resolve(file) };
-  writeFileSync(rendezvousPath(file), JSON.stringify(data), 'utf8');
+  // Owner-only (0600): the temp dir can be shared (/tmp on Linux), and the advert reveals which
+  // document is under review plus the live loopback port. No reason for other accounts to read it.
+  writeFileSync(rendezvousPath(file), JSON.stringify(data), { encoding: 'utf8', mode: 0o600 });
 }
 
 /** Read the advert for `file`, or null if none exists, it is corrupt, or its process is gone. */

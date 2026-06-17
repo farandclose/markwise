@@ -67,6 +67,25 @@ describe('handoff doorbell + long-poll', () => {
     expect((await fetch(`${base}/api/handoff`, { method: 'POST', headers: H })).status).toBe(200);
   });
 
+  it('consumes a latched doorbell: one wait sees it, the next blocks until a fresh ring', async () => {
+    const base = await start({ handoffWaitMs: 40 });
+    await fetch(`${base}/api/handoff`, { method: 'POST', headers: H }); // no waiter parked -> latched
+    const first = await (await fetch(`${base}/api/handoff/wait`, { headers: H })).json();
+    expect(first.handoff).toBe(true); // consumes the latch
+    const second = await (await fetch(`${base}/api/handoff/wait`, { headers: H })).json();
+    expect(second.handoff).toBe(false); // a second round must await a fresh handoff, not re-fire
+  });
+
+  it('releasing a parked waiter does not leave a latch for the next round', async () => {
+    const base = await start({ handoffWaitMs: 40 });
+    const parked = fetch(`${base}/api/handoff/wait`, { headers: H }).then((r) => r.json());
+    await new Promise((r) => setTimeout(r, 20)); // let it park
+    await fetch(`${base}/api/handoff`, { method: 'POST', headers: H }); // hands straight to the waiter
+    expect((await parked).handoff).toBe(true);
+    const next = await (await fetch(`${base}/api/handoff/wait`, { headers: H })).json();
+    expect(next.handoff).toBe(false); // nothing latched behind it
+  });
+
   it('rejects POST /api/handoff without the x-mw-handoff header (403)', async () => {
     const base = await start();
     const res = await fetch(`${base}/api/handoff`, { method: 'POST' });

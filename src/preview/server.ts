@@ -220,31 +220,41 @@ export function createPreviewServer(
           res.end(JSON.stringify({ error: 'missing x-mw-handoff header' }));
           return;
         }
-        // The doorbell: mark the handoff and release every pending waiter.
+        // The doorbell. The handoff is a single-use baton, not a sticky flag: if a waiter is parked
+        // hand it straight over (consumed now); if none is parked yet, latch it for the next wait to
+        // pick up exactly once. Either way a later round needs a fresh click - so re-launching
+        // `prompt --wait` for the next pass blocks until the human hands off again.
         if (req.method === 'POST' && url.pathname === '/api/handoff') {
-          handoffRequested = true;
           const waiters = [...handoffWaiters];
           handoffWaiters.clear();
-          for (const w of waiters) w(true);
+          if (waiters.length > 0) {
+            for (const w of waiters) w(true);
+          } else {
+            handoffRequested = true;
+          }
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
           res.end(JSON.stringify({ ok: true }));
           return;
         }
-        // The long-poll: resolve at once if the doorbell already rang, else hold the response open
-        // until it rings or the keep-waiting timeout elapses (the waiter then re-polls). Clean up
-        // on client disconnect so a dropped waiter never leaks.
+        // The long-poll: consume a latched handoff at once, else hold the response open until the
+        // doorbell rings or the keep-waiting timeout elapses (the waiter then re-polls). Clean up on
+        // settle and on client disconnect so a dropped waiter never leaks its timer or set entry.
         if (req.method === 'GET' && url.pathname === '/api/handoff/wait') {
           if (handoffRequested) {
+            handoffRequested = false; // consume: the next waiter must await a fresh doorbell
             res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ handoff: true }));
             return;
           }
           let settled = false;
+          const cleanup = (): void => {
+            clearTimeout(timer);
+            handoffWaiters.delete(settle);
+          };
           const settle = (handed: boolean): void => {
             if (settled) return;
             settled = true;
-            clearTimeout(timer);
-            handoffWaiters.delete(settle);
+            cleanup();
             res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ handoff: handed }));
           };
@@ -253,8 +263,7 @@ export function createPreviewServer(
           req.on('close', () => {
             if (settled) return;
             settled = true;
-            clearTimeout(timer);
-            handoffWaiters.delete(settle);
+            cleanup();
           });
           return;
         }
