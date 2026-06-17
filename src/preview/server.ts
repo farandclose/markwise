@@ -118,7 +118,18 @@ function sendError(res: ServerResponse, err: unknown): void {
  * external edits and, later, our own writes show up on refresh) and returns buildDocPayload(...).
  * Everything else is a static asset served from ASSET_DIR. Bind with `.listen(0, '127.0.0.1')`.
  */
-export function createPreviewServer(filePath: string): Server {
+export function createPreviewServer(
+  filePath: string,
+  opts: { handoffWaitMs?: number } = {}
+): Server {
+  // Handoff signal state, shared across requests for this one server. The previewer's
+  // "Hand to agent" button POSTs /api/handoff (the doorbell); a separate `markwise prompt --wait`
+  // process long-polls GET /api/handoff/wait and unblocks the moment the doorbell rings. The
+  // server keeps serving throughout, so the preview stays live while the agent works.
+  const handoffWaitMs = opts.handoffWaitMs ?? 25_000;
+  let handoffRequested = false;
+  const handoffWaiters = new Set<(handed: boolean) => void>();
+
   return createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? '/', 'http://localhost');
@@ -195,6 +206,60 @@ export function createPreviewServer(filePath: string): Server {
         const payload = buildDocPayload(source, filePath);
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(payload));
+        return;
+      }
+
+      // Handoff doorbell + long-poll. Neither is a document mutation, so there is no version
+      // precondition - but both require the x-mw-handoff custom header. A cross-origin page cannot
+      // attach a custom header without a CORS preflight this server never answers, so it cannot
+      // forge a handoff even knowing the port (the same gate logic the top-of-file comment
+      // describes for x-mw-version on writes).
+      if (url.pathname === '/api/handoff' || url.pathname === '/api/handoff/wait') {
+        if (req.headers['x-mw-handoff'] === undefined) {
+          res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ error: 'missing x-mw-handoff header' }));
+          return;
+        }
+        // The doorbell: mark the handoff and release every pending waiter.
+        if (req.method === 'POST' && url.pathname === '/api/handoff') {
+          handoffRequested = true;
+          const waiters = [...handoffWaiters];
+          handoffWaiters.clear();
+          for (const w of waiters) w(true);
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+          res.end(JSON.stringify({ ok: true }));
+          return;
+        }
+        // The long-poll: resolve at once if the doorbell already rang, else hold the response open
+        // until it rings or the keep-waiting timeout elapses (the waiter then re-polls). Clean up
+        // on client disconnect so a dropped waiter never leaks.
+        if (req.method === 'GET' && url.pathname === '/api/handoff/wait') {
+          if (handoffRequested) {
+            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ handoff: true }));
+            return;
+          }
+          let settled = false;
+          const settle = (handed: boolean): void => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            handoffWaiters.delete(settle);
+            res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ handoff: handed }));
+          };
+          const timer = setTimeout(() => settle(false), handoffWaitMs);
+          handoffWaiters.add(settle);
+          req.on('close', () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            handoffWaiters.delete(settle);
+          });
+          return;
+        }
+        res.writeHead(405, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'method not allowed' }));
         return;
       }
 
