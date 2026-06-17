@@ -9,6 +9,7 @@ import { buildSetupOutput } from './setup.js';
 import { stripText } from './strip.js';
 import { readDocument, writeDocument, applyEol } from './eol.js';
 import { createPreviewServer } from './preview/server.js';
+import { writeRendezvous, removeRendezvous } from './preview/rendezvous.js';
 import type { Finding } from './types.js';
 
 const USAGE = `markwise - a human-agent review layer for markdown
@@ -330,8 +331,21 @@ function previewCommand(args: Args): void {
     const addr = server.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;
     const url = `http://127.0.0.1:${port}/`;
+    // Advertise the dynamic port so `markwise prompt <file> --wait` can find this server.
+    writeRendezvous(file, { port, pid: process.pid });
     process.stdout.write(`markwise preview: serving ${file}\n  ${url}\n  (Ctrl+C to stop)\n`);
     openBrowser(url);
+  });
+  // Remove the advert when the preview goes away, so a later `--wait` never chases a dead port.
+  const cleanup = (): void => removeRendezvous(file);
+  process.on('exit', cleanup);
+  process.on('SIGINT', () => {
+    cleanup();
+    process.exit(0);
+  });
+  process.on('SIGTERM', () => {
+    cleanup();
+    process.exit(0);
   });
   // Intentionally does not return / exit: the listening server keeps the event loop alive.
 }
