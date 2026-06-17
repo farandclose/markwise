@@ -10,6 +10,7 @@ import { stripText } from './strip.js';
 import { readDocument, writeDocument, applyEol } from './eol.js';
 import { createPreviewServer } from './preview/server.js';
 import { writeRendezvous, removeRendezvous } from './preview/rendezvous.js';
+import { waitForHandoff } from './preview/wait.js';
 import type { Finding } from './types.js';
 
 const USAGE = `markwise - a human-agent review layer for markdown
@@ -17,7 +18,7 @@ const USAGE = `markwise - a human-agent review layer for markdown
 Usage:
   markwise lint <file...> [--fix] [--strict] [--json]
   markwise status <file...> [--json]
-  markwise prompt <file> [--author]
+  markwise prompt <file> [--author] [--wait]
   markwise export <file> [--output <path>]   (alias: strip)
   markwise agent-setup                       (alias: setup) print coding-agent setup instructions
   markwise preview <file>                    open the document in a local web previewer
@@ -27,6 +28,8 @@ Options:
   --strict          Treat warnings as failures (non-zero exit).
   --json            Emit output as JSON instead of text.
   --author          prompt: emit the note-authoring block instead of the revise/respond block.
+  --wait            prompt: block until the preview's "Hand to agent" button is clicked, then
+                    emit the briefing. Run in the background beside markwise preview <file>.
   -o, --output <p>  export: write the clean copy to <p> instead of stdout.
   -h, --help        Show this help.
 
@@ -46,6 +49,7 @@ interface Args {
   strict: boolean;
   json: boolean;
   author: boolean;
+  wait: boolean;
   output: string | null;
   help: boolean;
 }
@@ -58,6 +62,7 @@ function parseArgs(argv: string[]): Args {
     strict: false,
     json: false,
     author: false,
+    wait: false,
     output: null,
     help: false,
   };
@@ -67,6 +72,7 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--strict') args.strict = true;
     else if (a === '--json') args.json = true;
     else if (a === '--author') args.author = true;
+    else if (a === '--wait') args.wait = true;
     else if (a === '-h' || a === '--help') args.help = true;
     else if (a === '-o' || a === '--output') args.output = argv[++i] ?? null;
     else if (a.startsWith('--output=')) args.output = a.slice('--output='.length);
@@ -210,37 +216,80 @@ function statusCommand(args: Args): number {
   return 0;
 }
 
+/**
+ * Assemble the briefing `markwise prompt` hands to an agent: the instruction template with the
+ * time filled in, the notes currently waiting on the agent (revise/respond mode), and the document
+ * itself. Reads the file fresh, so callers get the document as it stands right now (the --wait path
+ * relies on this to capture the state at the moment of handoff). Returns the text, or an exit code
+ * on a read/template error (the message is written to stderr here).
+ */
+function assembleBriefing(file: string, author: boolean): { text: string } | { code: number } {
+  let document: string;
+  try {
+    ({ source: document } = readDocument(file));
+  } catch {
+    process.stderr.write(`markwise: cannot read ${file}\n`);
+    return { code: 2 };
+  }
+
+  const templateFile = author ? 'AUTHOR_PROMPT.md' : 'AGENT_PROMPT.md';
+  let template: string;
+  try {
+    template = readFileSync(new URL(`../${templateFile}`, import.meta.url), 'utf8');
+  } catch {
+    process.stderr.write(`markwise: cannot find ${templateFile} in the package\n`);
+    return { code: 2 };
+  }
+
+  // In revise/respond mode, point the agent at the notes that are its turn (reviewer spoke last).
+  const waitingOnAgent = author
+    ? undefined
+    : status(document).waitingOnAgent.map((n) => ({ id: n.id, type: n.type }));
+
+  const now = new Date().toISOString();
+  return { text: buildPromptOutput({ template, document, now, waitingOnAgent }) };
+}
+
 function promptCommand(args: Args): number {
+  if (args.files.length !== 1) {
+    process.stderr.write('markwise prompt: expects exactly one input file\n');
+    return 2;
+  }
+  const briefing = assembleBriefing(args.files[0]!, args.author);
+  if ('code' in briefing) return briefing.code;
+  process.stdout.write(briefing.text + '\n');
+  return 0;
+}
+
+/**
+ * `markwise prompt <file> --wait`: block until the human clicks "Hand to agent" in the running
+ * preview, then emit the briefing. The preview keeps serving throughout (the agent edits while the
+ * human watches). Meant to be launched in the background alongside `markwise preview <file>`; its
+ * clean exit with the briefing on stdout is what hands the baton back to the launching agent.
+ */
+async function promptWaitCommand(args: Args): Promise<number> {
   if (args.files.length !== 1) {
     process.stderr.write('markwise prompt: expects exactly one input file\n');
     return 2;
   }
   const file = args.files[0]!;
 
-  let document: string;
-  try {
-    ({ source: document } = readDocument(file));
-  } catch {
-    process.stderr.write(`markwise: cannot read ${file}\n`);
+  const result = await waitForHandoff(file);
+  if (result === 'no-preview') {
+    process.stderr.write(
+      `markwise prompt --wait: no live preview found for ${file}\n` +
+        `  start one first with \`markwise preview ${file}\` (in the background), then hand off from the browser.\n`
+    );
     return 2;
   }
-
-  const templateFile = args.author ? 'AUTHOR_PROMPT.md' : 'AGENT_PROMPT.md';
-  let template: string;
-  try {
-    template = readFileSync(new URL(`../${templateFile}`, import.meta.url), 'utf8');
-  } catch {
-    process.stderr.write(`markwise: cannot find ${templateFile} in the package\n`);
-    return 2;
+  if (result === 'gone') {
+    process.stderr.write(`markwise prompt --wait: the preview for ${file} is no longer running\n`);
+    return 1;
   }
 
-  // In revise/respond mode, point the agent at the notes that are its turn (reviewer spoke last).
-  const waitingOnAgent = args.author
-    ? undefined
-    : status(document).waitingOnAgent.map((n) => ({ id: n.id, type: n.type }));
-
-  const now = new Date().toISOString();
-  process.stdout.write(buildPromptOutput({ template, document, now, waitingOnAgent }) + '\n');
+  const briefing = assembleBriefing(file, args.author);
+  if ('code' in briefing) return briefing.code;
+  process.stdout.write(briefing.text + '\n');
   return 0;
 }
 
@@ -367,6 +416,11 @@ function main(): void {
     process.exit(statusCommand(args));
   }
   if (args.command === 'prompt') {
+    if (args.wait) {
+      // Long-running until the human hands off; resolve asynchronously, do not exit synchronously.
+      promptWaitCommand(args).then((code) => process.exit(code));
+      return;
+    }
     process.exit(promptCommand(args));
   }
   if (args.command === 'agent-setup' || args.command === 'setup') {
