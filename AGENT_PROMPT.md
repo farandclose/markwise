@@ -75,6 +75,8 @@ closed for good; never touch it.
   `text` to match what you actually wrote.
 - Avoid the sequences `-->` and `--` inside any `body` or `text` value (they break HTML comments).
 - Use this timestamp for every `at` you write: `<CURRENT_TIME>`.
+- If you were handed off from a live preview (it is still open), the reviewer may be watching your
+  edits land in real time. Work in tidy, incremental steps so the document stays readable as you go.
 
 ## When you are done
 

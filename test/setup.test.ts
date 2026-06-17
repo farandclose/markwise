@@ -12,6 +12,8 @@ test('SETUP_PROMPT.md carries the canonical block and the install spec', () => {
   expect(t).toContain('npm i -g markwise'); // the single install spec (spec section 4)
   expect(t).toContain('markwise preview <file>');
   expect(t).toContain('markwise prompt <file>');
+  expect(t).toContain('markwise prompt <file> --wait'); // the live-handoff waiter
+  expect(t).toContain('in the background'); // background-launch guidance for the live flow
   expect(t).toContain('never resolve notes yourself');
   expect(t).toContain('$HOME/.claude/CLAUDE.md');
   expect(t).toContain('AGENTS.md');

@@ -52,13 +52,20 @@ acted on.
 The loop:
 
 1. Write or update the markdown file on disk.
-2. Open it for the user: `markwise preview <file>` (prints a localhost URL; keep it running).
-   The user reads in the browser and leaves comments, replies, and suggested
-   insert/replace/delete edits. Everything they do is saved into the file.
-3. When the user says they are done (or asks you to act on the feedback), run
-   `markwise prompt <file>` and follow what it prints: act on each note that is waiting on
-   you, reply in its thread, and never resolve notes yourself - resolving is the human's call.
-4. Repeat until no notes are waiting.
+2. Open it for the user and start listening for the handoff - both in the background, so they keep
+   running while the user reviews:
+   - `markwise preview <file>` prints a localhost URL and keeps serving. Run it in the background.
+     The user reads in the browser and leaves comments, replies, and suggested
+     insert/replace/delete edits; everything they do is saved into the file.
+   - `markwise prompt <file> --wait` blocks until the user clicks "Hand to agent" in that preview,
+     then prints the briefing and exits. Run it in the background too; when it returns, the user has
+     handed control to you and its output is your instructions. (Prefer not to wait? The user can
+     instead just tell you they are done, and you run `markwise prompt <file>` yourself.)
+3. On handoff (the `--wait` command returns, or the user says they are done), follow the briefing:
+   act on each note waiting on you, reply in its thread, and never resolve notes yourself - that is
+   the human's call. The preview stays open while you work, so the user watches your edits and
+   resolves land live; make tidy, incremental edits.
+4. Repeat until no notes are waiting, then stop the preview.
 
 Useful commands: `markwise status <file>` (what is waiting on whom), `markwise lint <file>`
 (validate the review data; `--fix` repairs mechanical fields), `markwise export <file>` (a
