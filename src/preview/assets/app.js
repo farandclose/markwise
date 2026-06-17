@@ -543,13 +543,23 @@
   if (handoffBtn) {
     handoffBtn.addEventListener('click', function () {
       if (!handoff || !handoff.text) return;
-      copyToClipboard(handoff.text).then(function (ok) {
-        showToast(
-          ok
-            ? 'Copied - paste into your agent to start the revision pass'
-            : "Couldn't copy - check clipboard permissions"
-        );
-      });
+      // Keep copying the pickup ticket to the clipboard as a manual fallback: a human in a plain
+      // terminal (no agent waiting on this preview) can still paste it in by hand.
+      copyToClipboard(handoff.text);
+      // Ring the doorbell: signal the agent that launched this preview to pick up the briefing and
+      // start the pass. The x-mw-handoff header earns the same CSRF protection the write routes get
+      // from x-mw-version (a cross-origin page cannot attach a custom header without a preflight).
+      fetch('/api/handoff', { method: 'POST', headers: { 'x-mw-handoff': '1' } })
+        .then(function (r) {
+          showToast(
+            r.ok
+              ? 'Handed off - your agent is picking up the notes. Watch it work here.'
+              : 'Copied to clipboard - paste into your agent to start the pass.'
+          );
+        })
+        .catch(function () {
+          showToast('Copied to clipboard - paste into your agent to start the pass.');
+        });
     });
   }
 
@@ -934,11 +944,10 @@
     );
   }
 
-  // Returning to the tab is the natural moment the file may have changed underneath the page (an
-  // agent pass, an editor save). Revalidate quietly: repaint only when the version actually moved
-  // and nothing transient is open; a stale POST would be refused (409) anyway - this just makes the
-  // common case seamless.
-  window.addEventListener('focus', function () {
+  // Quietly re-fetch and repaint only when the document actually changed, and never while transient
+  // UI (a pill, draft, in-place compose, or discard confirm) is open - a repaint would destroy work
+  // in progress. A stale POST would be refused (409) anyway; this just makes the common case seamless.
+  function revalidate() {
     if (hasTransientUi()) return;
     fetch('/api/doc')
       .then(function (r) { return r.json(); })
@@ -946,7 +955,23 @@
         if (payload && payload.version && payload.version !== docVersion) applyPayload(payload);
       })
       .catch(function () { /* offline blip: keep the current view */ });
-  });
+  }
+
+  // Returning to the tab is one natural moment the file may have changed underneath the page (an
+  // agent pass, an editor save).
+  window.addEventListener('focus', revalidate);
+
+  // Live updates: while the tab is visible, glance at the document on a short interval and repaint
+  // when it moved - so after a handoff the human watches the agent's edits and resolves land in
+  // near-real-time, hands-free. Polling pauses when the tab is hidden (nothing to show), and keeping
+  // docVersion fresh means the human's own next action rarely collides with the agent (the stale-write
+  // path stays as the backstop). Repaint only on a real version change, so an idle document never
+  // flickers and the scroll position is left alone.
+  var LIVE_POLL_MS = 1500;
+  window.setInterval(function () {
+    if (document.hidden) return;
+    revalidate();
+  }, LIVE_POLL_MS);
 
   // A completed selection (double-click a word, triple-click a line, or drag a phrase) shows the
   // pill on mouse release. All three end with a mouseup while a non-collapsed selection exists.

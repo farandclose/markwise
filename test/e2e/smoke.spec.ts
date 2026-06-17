@@ -167,3 +167,32 @@ test('a stale tab cannot mis-anchor a note: the write is refused and the view re
   await expect(page.locator('.mw-doc')).toContainText('Totally different prose');
   expect(readFileSync(file, 'utf8')).toBe(edited); // nothing was written
 });
+
+test('Hand to agent rings the doorbell (POST /api/handoff) and keeps the clipboard fallback', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(await serve(NOTED)); // s1 is the agent's turn -> the handoff button is enabled
+  const doorbell = page.waitForRequest(
+    (r) => r.url().endsWith('/api/handoff') && r.method() === 'POST'
+  );
+  await page.locator('.mw-handoff').click();
+  const req = await doorbell;
+  expect(req.headers()['x-mw-handoff']).toBeTruthy(); // carries the CSRF-guard header
+  await expect(page.locator('.mw-toast')).toContainText('Handed off');
+  // The clipboard fallback is still populated with the pickup ticket (a human can paste it by hand).
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toContain('markwise prompt');
+});
+
+test('the preview updates live when the file changes underneath it (no user action)', async ({
+  page,
+}) => {
+  await page.goto(await serve(PROSE));
+  await expect(page.locator('.mw-doc')).toContainText('Closing prose.');
+  // An agent (or an editor) rewrites the file while the page just sits there, untouched.
+  writeFileSync(file, '# Demo\n\nAlpha bravo charlie.\n\nThe agent rewrote this paragraph.\n', 'utf8');
+  // The live poll picks it up within its interval - no click, no reload.
+  await expect(page.locator('.mw-doc')).toContainText('The agent rewrote this paragraph.');
+});
