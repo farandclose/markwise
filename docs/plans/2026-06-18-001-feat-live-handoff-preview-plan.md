@@ -1,7 +1,7 @@
 ---
 title: "feat: Live agent handoff with a preview that stays open"
 type: feat
-status: active
+status: completed
 date: 2026-06-18
 depth: deep
 ---
