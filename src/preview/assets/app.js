@@ -122,6 +122,14 @@
     });
   }
   document.addEventListener('selectionchange', scheduleCaret);
+
+  // The pill mirrors the selection: once a span pill's selection collapses or moves off the runs
+  // (a click inside it, a caret move, Esc clearing it), the pill goes with it (R1). Cheap - it only
+  // resolves a target while a span pill is actually up. Point pills (dblclick-on-gap) keep their own
+  // click-away / Esc dismissal, since they are anchored to a collapsed caret by design.
+  document.addEventListener('selectionchange', function () {
+    if (pillEl && pendingTarget && pendingTarget.kind === 'span' && !spanTargetFromSelection()) clearPill();
+  });
   window.addEventListener('resize', scheduleCaret);
 
   function idSel(id) {
@@ -522,6 +530,18 @@
       openDraft(pendingTarget);
     });
     body.appendChild(pillEl);
+  }
+
+  // Surface the pill for the current selection when it is a commentable span and no compose/draft
+  // already owns the keyboard. The shared entry point for both gestures - mouse release and Shift
+  // release - so the two stay in lockstep (R2).
+  function showPillFromSelection() {
+    if (replaceCompose || insertCompose) return;
+    if (railEl.querySelector('.mw-draft')) return;
+    var ae = document.activeElement;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
+    var target = spanTargetFromSelection();
+    if (target) showPill(target);
   }
 
   function wireProseActivation() {
@@ -973,8 +993,10 @@
   document.addEventListener('mouseup', function (e) {
     // A release on the pill itself must not redraw it - let the pill's own click open the draft.
     if (pillEl && e.target === pillEl) return;
-    var target = spanTargetFromSelection();
-    if (target) showPill(target);
+    // Defer a frame: a click inside an existing selection collapses it *after* this handler runs,
+    // so reading the selection now would re-show a pill that is about to be orphaned (R1). A frame
+    // later the selection has settled, so the pill surfaces only when it is genuinely there.
+    window.requestAnimationFrame(showPillFromSelection);
   });
 
   // ---- Keyboard ladder (Op2) ------------------------------------------------------------------
@@ -1008,8 +1030,16 @@
     }
     var direction = (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? 'backward' : 'forward';
     e.preventDefault();
+    clearPill(); // any arrow navigation drops a stale pill; an extend re-raises it on Shift release (R2)
     sel.modify(e.shiftKey ? 'extend' : 'move', direction, granularity);
     updateCaret(); // immediate; the selectionchange re-sync would lag a frame
+  });
+
+  // Releasing Shift is the keyboard analogue of mouseup: a completed Shift+arrow selection surfaces
+  // the pill once, on release - not while extending (R2). The ladder keydown above cleared it during
+  // the gesture, so re-extending hides it again until the next release.
+  document.addEventListener('keyup', function (e) {
+    if (e.key === 'Shift') showPillFromSelection();
   });
 
   // Pressing Delete or Backspace on a non-collapsed selection proposes deleting that span. Ignored
@@ -1068,6 +1098,17 @@
     if (off != null) {
       showPill({ kind: 'point', start: off, rect: { left: e.clientX, top: e.clientY, width: 0 } });
     }
+  });
+
+  // Enter opens the composer for a showing pill - the keyboard analogue of clicking it (R3). Guarded
+  // to fields and buttons so typing in a draft/reply or activating a toolbar button is never
+  // hijacked; the type-to-replace handler ignores Enter, so there is no collision.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !pillEl) return;
+    var ae = document.activeElement;
+    if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.tagName === 'BUTTON' || ae.isContentEditable)) return;
+    e.preventDefault();
+    openDraft(pendingTarget);
   });
 
   // Esc dismisses a pending pill, or an open draft (with its anchor), and clears the selection.
