@@ -38,3 +38,15 @@ export type {
   Finding,
   Severity,
 } from './types.js';
+
+// Previewer engine surface (DECISIONS D40: exposed at first reuse, for the VS Code extension).
+// These are the pure render / payload / mutate / handoff functions the extension imports to drive
+// a webview in place of the localhost HTTP server. renderDocumentHtml stays internal - callers use
+// buildDocPayload, which wraps it.
+export { buildDocPayload } from './preview/payload.js';
+export { createNote, appendReply, resolveNote, discardNote, NoteMutationError } from './preview/mutate.js';
+export { persistDocument } from './preview/persist.js';
+export type { PersistContext } from './preview/persist.js';
+export { buildHandoffText } from './preview/handoff.js';
+export type { HandoffInput } from './preview/handoff.js';
+export type { DocPayload, NoteView, HandoffInfo } from './preview/types.js';

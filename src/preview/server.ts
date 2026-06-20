@@ -3,11 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { buildDocPayload } from './payload.js';
 import type { DocPayload } from './types.js';
-import { fixText } from '../fix.js';
-import { lintText } from '../lint.js';
-import { shortHash } from '../hash.js';
 import { readDocument, writeDocument } from '../eol.js';
 import { appendReply, resolveNote, createNote, discardNote, NoteMutationError } from './mutate.js';
+import { persistDocument } from './persist.js';
 
 // Static assets live next to the compiled server (dist/preview/assets/, populated by the build's
 // copy step). Resolved relative to this module so it works whether run from source-test or dist.
@@ -86,23 +84,10 @@ function persist(
   transform: (src: string) => string
 ): DocPayload {
   const { source, eol } = readDocument(filePath);
-  if (expectedVersion === undefined || expectedVersion === '') {
-    throw new NoteMutationError('missing x-mw-version header (reload the page)', 428);
-  }
-  if (shortHash(source) !== expectedVersion) {
-    throw new NoteMutationError('document changed on disk since the page loaded', 409);
-  }
-  const mutated = transform(source); // throws NoteMutationError on bad input
-  const fixed = fixText(mutated).output;
-  const findings = lintText(fixed);
-  if (findings.some((f) => f.severity === 'error')) {
-    throw new NoteMutationError(
-      'the change would produce an invalid document; run `markwise lint` on the file first',
-      422
-    );
-  }
-  writeDocument(filePath, fixed, eol);
-  return buildDocPayload(fixed, filePath);
+  return persistDocument(
+    { filePath, source, expectedVersion, write: (text) => writeDocument(filePath, text, eol) },
+    transform
+  );
 }
 
 /** Write a JSON error response, mapping a NoteMutationError to its status (else 500). */
