@@ -29,6 +29,10 @@
      Neutral by choice - the chrome carries no hue; annotations keep theirs. */
   --mw-hover-tint: rgba(29, 29, 31, 0.06);
   --mw-focus-ring: rgba(29, 29, 31, 0.32);
+  /* Text selection: a low-chroma wash of the theme's own ink, NOT the browser-default blue (which
+     is off-palette and collides with the replace hue). Achromatic so it never reads as an
+     annotation; it is the reviewer's live cursor, distinct from any committed mark. */
+  --mw-selection: rgba(29, 29, 31, 0.13);
 
   /* Code */
   --mw-code-bg: #f5f5f7;
@@ -44,7 +48,7 @@
   --mw-replace-line: #9fd0ff;             /* replace underline */
   --mw-delete: #ffd6d6;                   /* delete */
   --mw-delete-deep: #ffadad;
-  --mw-insert: #1f8f4e;                   /* insert pillar */
+  --mw-insert: #177a42;                   /* insert pillar */
   --mw-anchor: rgba(255, 213, 92, 0.5);   /* highlighter over the text being commented on */
 
   /* Layout (theme-agnostic) */
@@ -78,6 +82,7 @@
 
   --mw-hover-tint: rgba(232, 232, 235, 0.12);
   --mw-focus-ring: rgba(232, 232, 235, 0.40);
+  --mw-selection: rgba(232, 232, 235, 0.18);
 
   --mw-code-bg: #1e1f23;
   --mw-code-inline-bg: #24252b;
@@ -117,6 +122,7 @@
 
   --mw-hover-tint: rgba(51, 43, 22, 0.08);
   --mw-focus-ring: rgba(51, 43, 22, 0.32);
+  --mw-selection: rgba(51, 43, 22, 0.16);
 
   --mw-code-bg: #ddca9f;
   --mw-code-inline-bg: #dccb9c;
@@ -130,7 +136,7 @@
   --mw-replace-line: #356fb4;
   --mw-delete: rgba(176, 64, 52, 0.20);
   --mw-delete-deep: rgba(176, 64, 52, 0.34);
-  --mw-insert: #1c8047;
+  --mw-insert: #15643a;
   --mw-anchor: rgba(196, 140, 28, 0.46);
 }
 
@@ -266,15 +272,26 @@ html, body {
   grid-template-columns: var(--mw-rail-w) minmax(0, var(--mw-col)) var(--mw-rail-w);
   justify-content: center;
   gap: 32px;
-  padding: 48px 24px 120px;
+  padding: 36px 24px 88px;
 }
-/* Reading column: serif body for an editorial, document-first read (P1). */
-.mw-doc { position: relative; grid-column: 2; width: 100%; max-width: var(--mw-col); font-family: var(--mw-font-serif); font-size: 17.5px; line-height: 1.72; }
+/* Reading column: serif body for an editorial, document-first read (P1). Line-height 1.6 is the
+   comfortable floor for this serif at 17.5px - tight enough to pack more lines per screen without
+   crowding (the reading column width is held at its ~75ch readability max, so density comes from
+   vertical rhythm, not longer lines). */
+.mw-doc { position: relative; grid-column: 2; width: 100%; max-width: var(--mw-col); font-family: var(--mw-font-serif); font-size: 17.5px; line-height: 1.6; }
 /* Headings stay sans - serif lives only in the prose, never the chrome or the heads. */
 .mw-doc h1, .mw-doc h2, .mw-doc h3, .mw-doc h4, .mw-doc h5, .mw-doc h6 { font-family: var(--mw-font-sans); }
-.mw-doc h1 { font-size: 2.15rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; margin: 0 0 0.55em; }
-.mw-doc h2 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.015em; margin: 1.9em 0 0.5em; }
-.mw-doc p { margin: 0 0 1.1em; }
+.mw-doc h1 { font-size: 2.15rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; margin: 0 0 0.5em; }
+/* Section break: a clear-but-tighter gap above each h2. The space above (1.4em) stays larger than
+   the gap below (0.4em) so a heading binds to the text it introduces (proximity grouping). */
+.mw-doc h2 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.015em; margin: 1.4em 0 0.4em; }
+.mw-doc h3 { margin: 1.2em 0 0.35em; }
+.mw-doc p { margin: 0 0 0.85em; }
+/* Lists share the paragraph's vertical rhythm; a small per-item gap keeps multi-line items legible
+   without the browser default's looseness. */
+.mw-doc ul, .mw-doc ol { margin: 0 0 0.85em; padding-left: 1.5em; }
+.mw-doc li { margin-bottom: 0.25em; }
+.mw-doc li:last-child { margin-bottom: 0; }
 .mw-doc pre { background: var(--mw-code-bg); padding: 14px 16px; border-radius: 8px; overflow: auto; font-family: var(--mw-font-mono); }
 .mw-doc code { background: var(--mw-code-inline-bg); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; font-family: var(--mw-font-mono); }
 .mw-doc pre code { background: none; padding: 0; }
@@ -318,10 +335,18 @@ html, body {
 .mw-clean .mw-span { background: none; text-decoration: none; }
 .mw-clean .mw-point { display: none; }
 
+/* Text selection in the reading column: theme-aware wash (P0). The browser default is a saturated
+   cool blue that ignores the theme and collides with the replace hue; this keeps selecting text
+   native to the surface ("the tool disappears"). Scoped to the doc so form fields stay native. */
+.mw-doc ::selection { background: var(--mw-selection); }
+.mw-doc ::-moz-selection { background: var(--mw-selection); }
+
 /* --- Notes revealed: in-prose treatments (spec section 4) --- */
 .mw-revealed .mw-span { border-radius: 3px; padding: 0 1px; cursor: pointer; }
 .mw-revealed .mw-span.mw-type-comment { background: var(--mw-comment); }
-.mw-revealed .mw-span.mw-type-replace { text-decoration: line-through; text-decoration-color: var(--mw-muted); color: var(--mw-muted); }
+/* Replace original: muted text recedes, but the strike takes the replace hue (not muted) so a swap
+   reads distinctly from a delete and visually links the struck original to its replacement. */
+.mw-revealed .mw-span.mw-type-replace { text-decoration: line-through; text-decoration-color: var(--mw-replace-line); color: var(--mw-muted); }
 .mw-revealed .mw-span.mw-type-delete  { background: var(--mw-delete); text-decoration: line-through; }
 
 /* Committed replace: the proposed replacement, rendered inline right after the struck original
@@ -335,6 +360,7 @@ html, body {
   color: var(--mw-ink);
   text-decoration: underline;
   text-decoration-color: var(--mw-replace-line);
+  text-decoration-thickness: 2px;
   border-radius: 3px;
   padding: 0 2px;
   margin-left: 3px;
@@ -365,10 +391,11 @@ html, body {
    reading column equals the file. Green tint + underline (the insert color), echoing the compose
    field; --mw-insert is saturated, so the tint is derived with color-mix (as the pillar halo is). */
 .mw-revealed .mw-point.mw-type-insert {
-  background: color-mix(in srgb, var(--mw-insert) 18%, transparent);
+  background: color-mix(in srgb, var(--mw-insert) 20%, transparent);
   color: var(--mw-ink);
   text-decoration: underline;
   text-decoration-color: var(--mw-insert);
+  text-decoration-thickness: 2px;
   border-radius: 3px;
   padding: 0 2px;
   cursor: pointer;
@@ -607,12 +634,12 @@ html, body {
 .mw-discard-remove { border-color: var(--mw-error); color: var(--mw-error); }
 
 /* Suggest-replace in-place compose (transient; wiped by load() on commit). The struck original is
-   the replace target - a MUTED strikethrough, deliberately not delete-red, so a replace never reads
-   as a delete. The inline editable field holds the proposed text and echoes the committed replace
-   color (tint + underline) so it reads as a suggestion while it is typed. */
+   the replace target - muted text with a replace-hued strike (matching the committed display), so a
+   replace never reads as a delete and the original links to the proposed text. The inline editable
+   field holds the proposed text and echoes the committed replace color (tint + underline). */
 .mw-replace-target {
   text-decoration: line-through;
-  text-decoration-color: var(--mw-muted);
+  text-decoration-color: var(--mw-replace-line);
   color: var(--mw-muted);
 }
 .mw-replace-field {
