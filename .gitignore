@@ -3,6 +3,10 @@ node_modules/
 dist/
 *.log
 
+# macOS folder metadata
+.DS_Store
+**/.DS_Store
+
 # Transient session / harness artifacts (not project source)
 .superpowers/
 .claude/
