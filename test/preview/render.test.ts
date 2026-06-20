@@ -220,3 +220,45 @@ describe('renderDocumentHtml: committed replace shows its replacement inline', (
     expect(renderDocumentHtml(src)).not.toContain('mw-replace-text');
   });
 });
+
+// A note whose range crosses a paragraph boundary must light every paragraph it covers. An inline
+// <span> cannot legally cross a <p>, so the highlight is closed at each block end and reopened at the
+// next block start - one valid span per block (2A, 2026-06-20-cross-block-comment).
+describe('renderDocumentHtml: a span note that crosses a block boundary', () => {
+  const XSRC = [
+    '# T',
+    '',
+    'First paragraph <!-- mw:x1 -->starts here.',
+    '',
+    'And ends <!-- /mw:x1 --> in the second paragraph.',
+    '',
+    '<!-- mw:log v=1',
+    '{"id":"x1","type":"comment","state":"open","disp":"none","anchor":{"kind":"span","hash":"0","before":"graph ","after":" in"},"thread":[]}',
+    '-->',
+    '',
+  ].join('\n');
+
+  it('highlights both paragraphs the note spans (not just the first)', () => {
+    const html = renderDocumentHtml(XSRC);
+    const ps = html.match(/<p>[\s\S]*?<\/p>/g) ?? [];
+    expect(ps.length).toBe(2);
+    expect(ps[0]).toContain('data-mw-id="x1"');
+    expect(ps[1]).toContain('data-mw-id="x1"'); // the para that used to render unhighlighted
+  });
+
+  it('keeps every block self-balanced (no span crosses a </p>)', () => {
+    const html = renderDocumentHtml(XSRC);
+    const ps = html.match(/<p>[\s\S]*?<\/p>/g) ?? [];
+    for (const p of ps) {
+      const opens = (p.match(/<span/g) ?? []).length;
+      const closes = (p.match(/<\/span>/g) ?? []).length;
+      expect(opens).toBe(closes);
+    }
+  });
+
+  it('does not leak the literal markers', () => {
+    const html = renderDocumentHtml(XSRC);
+    expect(html).not.toContain('<!-- mw:x1 -->');
+    expect(html).not.toContain('<!-- /mw:x1 -->');
+  });
+});

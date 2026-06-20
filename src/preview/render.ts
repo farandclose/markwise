@@ -5,6 +5,11 @@ import type { NoteView } from './types.js';
 
 interface RenderEnv {
   openById: Map<string, NoteView>;
+  // Highlight spans open at the current point in the render. A note whose range crosses a block
+  // boundary (e.g. paragraph -> paragraph) must be closed at each block end and reopened at the next
+  // block start, because an inline <span> cannot legally cross a <p> - the browser would auto-close
+  // it and the later blocks would lose their highlight. Tracked here, applied around each inline.
+  openSpans: Array<{ id: string; typeClass: string }>;
 }
 
 const escapeAttr = (s: string): string => s.replace(/"/g, '&quot;');
@@ -53,8 +58,12 @@ function annotateInlineOffsets(tokens: Token[], source: string): void {
   }
 }
 
-/** Convert a single `mw:` marker comment to its highlight span. Returns null if not a marker. */
-function convertMarker(raw: string, env: RenderEnv): string | null {
+/**
+ * Convert a single `mw:` marker comment to its highlight span. Returns null if not a marker.
+ * `track` records open/close on env.openSpans so cross-block spans can be rebuilt per block; it is
+ * true only for the inline path (the block path emits its span outside the per-block wrapper).
+ */
+function convertMarker(raw: string, env: RenderEnv, track: boolean): string | null {
   const m = MARKER_ONE.exec(raw.trim());
   if (!m) return null;
   const isClose = m[1] === '/';
@@ -62,6 +71,10 @@ function convertMarker(raw: string, env: RenderEnv): string | null {
   const note = env.openById.get(id);
   if (!note) return raw; // orphan / resolved / unknown: leave the literal comment
   if (isClose) {
+    if (track) {
+      const i = env.openSpans.findIndex((s) => s.id === id);
+      if (i !== -1) env.openSpans.splice(i, 1);
+    }
     // A committed, open replace shows its proposed text inline, right after the struck original
     // (spec 2026-06-08-previewer-replace-inline-display). The text lives in the note record, not the
     // prose; it is escaped as content here and hidden in clean read mode by CSS. The replacement span
@@ -82,6 +95,7 @@ function convertMarker(raw: string, env: RenderEnv): string | null {
     const inner = note.type === 'insert' && note.text ? md.utils.escapeHtml(note.text) : '';
     return `<span class="mw-point ${typeClass}" data-mw-id="${escapeAttr(id)}">${inner}</span>`;
   }
+  if (track) env.openSpans.push({ id, typeClass });
   return `<span class="mw-span ${typeClass}" data-mw-id="${escapeAttr(id)}">`;
 }
 
@@ -122,7 +136,7 @@ md.renderer.rules.text = (tokens, idx) => {
 
 // Inline marker comments become highlight spans; non-marker inline HTML passes through.
 md.renderer.rules.html_inline = (tokens, idx, _opts, env) => {
-  const conv = convertMarker(tokens[idx]!.content, env as RenderEnv);
+  const conv = convertMarker(tokens[idx]!.content, env as RenderEnv, true);
   return conv ?? tokens[idx]!.content;
 };
 
@@ -130,14 +144,32 @@ md.renderer.rules.html_inline = (tokens, idx, _opts, env) => {
 md.renderer.rules.html_block = (tokens, idx, _opts, env) => {
   const content = tokens[idx]!.content;
   if (/^\s*<!--\s*mw:(log|archive)\b/.test(content)) return '';
-  const conv = convertMarker(content, env as RenderEnv);
+  const conv = convertMarker(content, env as RenderEnv, false);
   return conv ?? content;
+};
+
+// An inline highlight <span> cannot legally cross a block boundary: the browser auto-closes it at
+// the first </p>, so a note spanning two paragraphs would light only the first. Wrap each block's
+// inline render - reopen every still-open highlight at the block's start, close them at its end - so
+// a cross-block note is rebuilt as one valid span per block, and every block it covers is lit. The
+// markers themselves push/pop env.openSpans as they render inside `body` (the inline path passes
+// track=true), so `openSpans` holds exactly the spans carried in from earlier blocks.
+const defaultRenderInline = md.renderer.renderInline.bind(md.renderer);
+md.renderer.renderInline = function (tokens, options, env) {
+  const e = env as RenderEnv;
+  if (!e || !e.openSpans) return defaultRenderInline(tokens, options, env);
+  const reopen = e.openSpans
+    .map((s) => `<span class="mw-span ${s.typeClass}" data-mw-id="${escapeAttr(s.id)}">`)
+    .join('');
+  const body = defaultRenderInline(tokens, options, env);
+  const close = '</span>'.repeat(e.openSpans.length);
+  return reopen + body + close;
 };
 
 /** Render a Markwise document to display HTML: breadcrumb runs + highlight spans for OPEN notes. */
 export function renderDocumentHtml(source: string): string {
   const open = extractNotes(source).filter((n) => n.state === 'open');
-  const env: RenderEnv = { openById: new Map(open.map((n) => [n.id, n])) };
+  const env: RenderEnv = { openById: new Map(open.map((n) => [n.id, n])), openSpans: [] };
   const tokens = md.parse(source, env);
   annotateInlineOffsets(tokens, source);
   return md.renderer.render(tokens, md.options, env);

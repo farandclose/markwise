@@ -1111,13 +1111,16 @@
     openDraft(pendingTarget);
   });
 
-  // Esc dismisses a pending pill, or an open draft (with its anchor), and clears the selection.
+  // Esc on a pending pill collapses the selection to a caret at its start (keeps the reviewer's
+  // place); a second Esc - now with no pill - falls through to the caret-park branch below, which
+  // clears the caret and hands the arrow keys back to page scrolling (1A). Esc also dismisses an
+  // open draft (with its anchor) and clears the selection.
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     if (pillEl) {
       clearPill();
       var sel = window.getSelection();
-      if (sel) sel.removeAllRanges();
+      if (sel && sel.rangeCount) sel.collapseToStart();
       return;
     }
     var draft = railEl.querySelector('.mw-draft');

@@ -73,3 +73,28 @@ selection, and it is reachable end-to-end without a mouse.
 - `keyup` on Shift → `showPillFromSelection()` (R2); the arrow ladder clears the pill on
   extension so it only reappears on release.
 - `keydown` Enter, when a pill is showing and focus is outside fields → `openDraft(pendingTarget)` (R3).
+
+## Addendum (2026-06-20) — Esc behavior and cross-paragraph highlights
+
+Two follow-on questions surfaced while testing the selection flow. Both approved.
+
+### R4 — Esc collapses to a caret, then clears (two-step)
+- Previously, Esc on a showing pill cleared the whole selection — the caret vanished.
+- Now the first Esc dismisses the pill and **collapses the selection to a caret at its start**
+  (keeps the reviewer's place; they can keep navigating/typing by keyboard).
+- A second Esc (no pill) clears the caret and hands the arrow keys back to page scrolling. The
+  two steps are deliberate: a live caret keeps keyboard navigation engaged, so a single Esc cannot
+  both keep the place and release the arrows.
+
+### R5 — A comment highlights every paragraph it spans
+- A selection that crosses a paragraph boundary already stored a note covering the full range (the
+  agent always saw both paragraphs); only the **visual highlight** clamped to the first paragraph,
+  because an inline `<span>` cannot legally cross a `<p>` — the browser auto-closes it at the break.
+- The highlight is now rebuilt as one valid span per block: closed at each block end, reopened at
+  the next block start, so every paragraph (or heading / list item) the note covers is lit.
+- This is a render fix only; the data model and stored notes are unchanged. General across block
+  types, not just paragraph→paragraph.
+
+Implementation: R4 in `src/preview/assets/app.js` (Esc handler → `collapseToStart()`); R5 in
+`src/preview/render.ts` (track open spans in `RenderEnv`, wrap each block's inline render to
+close/reopen them). Covered by new cross-block tests in `test/preview/render.test.ts`.
