@@ -564,8 +564,8 @@
   }
 
   // Appearance: the toggle opens a small named picker (Dark / Light / Sepia). A direct pick beats
-  // cycling once there are three themes. The OS-preference fallback applies only while the user has
-  // made no explicit choice. Adding a theme later = one THEMES entry + its token block in app.css.
+  // cycling once there are three themes. Sepia is the default until the user makes an explicit
+  // choice. Adding a theme later = one THEMES entry + its token block in app.css.
   const THEMES = [
     { id: 'dark', label: 'Dark', swatch: '#16171a' },
     { id: 'light', label: 'Light', swatch: '#ffffff' },
@@ -621,7 +621,7 @@
     });
     body.appendChild(themeMenu);
 
-    setTheme(document.documentElement.getAttribute('data-theme') || 'dark', false);
+    setTheme(document.documentElement.getAttribute('data-theme') || 'sepia', false);
 
     themeBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -634,15 +634,6 @@
       if (e.key === 'Escape' && !themeMenu.hidden) { closeThemeMenu(); themeBtn.focus(); }
     });
   }
-  if (window.matchMedia) {
-    try {
-      window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', function (e) {
-        try { if (localStorage.getItem('mw-theme')) return; } catch (_) {}
-        setTheme(e.matches ? 'light' : 'dark', false);
-      });
-    } catch (_) {}
-  }
-
   // Pressing Delete on a selection proposes deleting that span. No body (a comment is optional and
   // can be added later via the card's Reply). The text stays in the file; the agent removes it.
   function createDelete(target) {

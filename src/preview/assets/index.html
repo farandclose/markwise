@@ -6,14 +6,14 @@
     <title>Markwise Preview</title>
     <script>
       // Resolve the theme before first paint (no flash): saved choice, else the
-      // OS/editor light/dark setting, else dark. app.js owns the toggle control.
+      // default (sepia, the warm paper reading mode). app.js owns the toggle control.
       (function () {
         try {
           var t = localStorage.getItem("mw-theme");
-          if (!t) t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+          if (!t) t = "sepia";
           document.documentElement.setAttribute("data-theme", t);
         } catch (e) {
-          document.documentElement.setAttribute("data-theme", "dark");
+          document.documentElement.setAttribute("data-theme", "sepia");
         }
       })();
     </script>
