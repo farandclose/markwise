@@ -1,6 +1,6 @@
 {
   "name": "markwise",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A human-agent review layer for markdown: anchored, structured notes stored in-file.",
   "repository": {
     "type": "git",
