@@ -39,7 +39,17 @@
         "title": "Open Preview",
         "category": "Markwise"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Markwise",
+      "properties": {
+        "markwise.handoff.agentCommand": {
+          "type": "string",
+          "default": "claude",
+          "markdownDescription": "Command used to launch a fresh agent for **Hand to agent**. The extension opens a new terminal, runs this command, and passes a prompt that points the agent at an in-process briefing (protocol + open notes + the document). Examples: `claude`, `codex`. Leave empty to always fall back to copying the briefing to the clipboard."
+        }
+      }
+    }
   },
   "scripts": {
     "build:engine": "npm --prefix .. run build",

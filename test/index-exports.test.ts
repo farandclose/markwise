@@ -20,6 +20,7 @@ describe('public library surface', () => {
       'detectEol',
       'toLf',
       'applyEol',
+      'buildPromptOutput',
     ]) {
       expect(typeof (mw as Record<string, unknown>)[name]).toBe('function');
     }

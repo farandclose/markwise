@@ -16,6 +16,10 @@ for (const name of ['app.js', 'app.css']) {
   await cp(new URL(name, engineAssets), new URL(name, dest));
 }
 
+// The agent-instruction template the in-process handoff prepends to its briefing (U6). Copied from
+// the engine's canonical AGENT_PROMPT.md so the editor handoff emits the same protocol as the CLI.
+await cp(new URL('../../AGENT_PROMPT.md', import.meta.url), new URL('AGENT_PROMPT.md', dest));
+
 // Extension-owned webview assets live in media/ (added in U3). Copy them all if the dir exists.
 const media = new URL('../media/', import.meta.url);
 try {
