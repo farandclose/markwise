@@ -4,6 +4,8 @@ import { parseInboundMessage, type ApiResponseMessage } from './messages';
 import { handleApiRequest, type HandlerDeps } from './requestHandler';
 import { sanitizeDocumentHtml } from './sanitize';
 import { readSourceLf } from './docio';
+import { makePersist } from './save';
+import { watchFile } from './watch';
 
 // The webview panel: presentation only. The host templates the page (the engine's index.html cannot
 // be copied verbatim - its root-absolute /app.css and /app.js refs must become asWebviewUri outputs
@@ -13,8 +15,7 @@ import { readSourceLf } from './docio';
 // reaches the engine, and every rendered payload is sanitized (R7) on its way out in the handler.
 
 interface PanelExtras {
-  /** Wired by U4 (save) and U6 (handoff); U3 renders read-only. */
-  persist?: HandlerDeps['persist'];
+  /** Wired by U6; U3-U5 do not need it. */
   handoff?: HandlerDeps['handoff'];
 }
 
@@ -38,12 +39,20 @@ export function openPreview(
 
   panel.webview.html = renderHtml(panel.webview, assetRoot);
 
+  // The watcher repaints on an agent's write; its noteSelfWrite hook lets the save bridge mark our
+  // own writes so they do not flicker (U5). The refresh is a ping: the previewer re-pulls /api/doc
+  // (its existing focus-revalidate path), so the repaint always reflects the freshly read document.
+  const watch = watchFile(uri, () => {
+    void panel.webview.postMessage({ type: 'refresh' });
+  });
+  const persist = makePersist(uri, watch.noteSelfWrite);
+
   const deps: HandlerDeps = {
     read: () => readSourceLf(uri),
     filePath: uri.fsPath,
     sanitizeHtml: sanitizeDocumentHtml,
     now: () => new Date().toISOString(),
-    persist: extras.persist,
+    persist,
     handoff: extras.handoff,
   };
 
@@ -65,6 +74,8 @@ export function openPreview(
     undefined,
     context.subscriptions
   );
+
+  panel.onDidDispose(() => watch.dispose(), undefined, context.subscriptions);
 
   return panel;
 }

@@ -29,9 +29,14 @@ function openDocFor(uri: vscode.Uri): vscode.TextDocument | undefined {
   return vscode.workspace.textDocuments.find((d) => d.uri.toString() === target);
 }
 
-/** Build the persist closure the request handler calls for one document's mutations. */
+/**
+ * Build the persist closure the request handler calls for one document's mutations. `onWrite` is
+ * called with the LF content just persisted (both paths), so the file watcher can suppress the
+ * watcher event our own write triggers (U5).
+ */
 export function makePersist(
-  uri: vscode.Uri
+  uri: vscode.Uri,
+  onWrite?: (lfContent: string) => void
 ): (expectedVersion: string | undefined, transform: (src: string) => string) => Promise<DocPayload> {
   return async (expectedVersion, transform) => {
     const open = openDocFor(uri);
@@ -43,11 +48,20 @@ export function makePersist(
         transform
       );
       await commitToBuffer(open, written!, expectedVersion);
+      onWrite?.(written!);
       return payload;
     }
     const { source, eol } = readDocument(uri.fsPath);
     return persistDocument(
-      { filePath: uri.fsPath, source, expectedVersion, write: (t) => writeDocument(uri.fsPath, t, eol) },
+      {
+        filePath: uri.fsPath,
+        source,
+        expectedVersion,
+        write: (t) => {
+          writeDocument(uri.fsPath, t, eol);
+          onWrite?.(t);
+        },
+      },
       transform
     );
   };
