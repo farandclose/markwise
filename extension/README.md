@@ -11,19 +11,22 @@ the Markwise engine as a library and bundles it, so the review loop needs no sep
 
 ## Develop
 
+This repo uses **pnpm** (do not run `npm install` - it will choke on pnpm's `node_modules` layout):
+
 ```bash
-npm install            # in this extension/ directory
-npm run build          # builds the engine, copies webview assets, bundles the host
-npm run test:unit      # pure-module tests (fast, headless)
+pnpm install            # in this extension/ directory
+pnpm run build          # builds the engine, copies webview assets, bundles the host
+pnpm run test:unit      # pure-module tests (fast, headless)
 ```
 
-Press `F5` in VS Code to launch the Extension Development Host, then run **Markwise: Open Preview**.
+Open the `extension/` folder in VS Code and press `F5` to launch the Extension Development Host
+(it builds first via the bundled launch config), then run **Markwise: Open Preview**.
 
 Integration tests (a downloaded VS Code instance) need a display:
 
 ```bash
-npm run pretest:integration
-npm run test:integration
+pnpm run pretest:integration
+pnpm run test:integration
 ```
 
 ## Configuration
