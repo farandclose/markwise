@@ -1,0 +1,63 @@
+{
+  "name": "markwise-vscode",
+  "displayName": "Markwise",
+  "description": "Read and review agent-written markdown inside VS Code: rendered document, anchored notes, and a one-click handoff to a fresh agent.",
+  "version": "0.1.0",
+  "publisher": "farandclose",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farandclose/markwise.git",
+    "directory": "extension"
+  },
+  "homepage": "https://github.com/farandclose/markwise#readme",
+  "bugs": {
+    "url": "https://github.com/farandclose/markwise/issues"
+  },
+  "keywords": ["markdown", "review", "annotations", "comments", "agents", "previewer"],
+  "categories": ["Other"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": ["onCommand:markwise.openPreview"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "markwise.openPreview",
+        "title": "Open Preview",
+        "category": "Markwise"
+      }
+    ]
+  },
+  "scripts": {
+    "build:engine": "npm --prefix .. run build",
+    "copy-assets": "node scripts/copy-assets.mjs",
+    "compile": "node esbuild.mjs",
+    "package": "node esbuild.mjs --production",
+    "build": "npm run build:engine && npm run copy-assets && npm run compile",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "pretest:integration": "tsc -p tsconfig.test.json && npm run copy-assets",
+    "test:integration": "vscode-test",
+    "test": "npm run test:unit",
+    "vscode:prepublish": "npm run build:engine && npm run copy-assets && npm run package"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "keytar", "@vscode/vsce-sign"]
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/mocha": "^10.0.7",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "ovsx": "^0.10.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
