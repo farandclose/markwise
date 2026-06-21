@@ -15,6 +15,11 @@ describe('public library surface', () => {
       'persistDocument',
       'buildHandoffText',
       'NoteMutationError',
+      'readDocument',
+      'writeDocument',
+      'detectEol',
+      'toLf',
+      'applyEol',
     ]) {
       expect(typeof (mw as Record<string, unknown>)[name]).toBe('function');
     }

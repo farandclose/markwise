@@ -50,3 +50,9 @@ export type { PersistContext } from './preview/persist.js';
 export { buildHandoffText } from './preview/handoff.js';
 export type { HandoffInput } from './preview/handoff.js';
 export type { DocPayload, NoteView, HandoffInfo } from './preview/types.js';
+
+// End-of-line I/O helpers. The extension's "document is not open in an editor" save path reads and
+// writes the file off disk exactly as the localhost server does, so it reuses the same LF
+// normalization and EOL re-application instead of re-implementing the I/O boundary (KTD3).
+export { readDocument, writeDocument, detectEol, toLf, applyEol } from './eol.js';
+export type { Eol } from './eol.js';

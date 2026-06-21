@@ -14,13 +14,24 @@
   "bugs": {
     "url": "https://github.com/farandclose/markwise/issues"
   },
-  "keywords": ["markdown", "review", "annotations", "comments", "agents", "previewer"],
-  "categories": ["Other"],
+  "keywords": [
+    "markdown",
+    "review",
+    "annotations",
+    "comments",
+    "agents",
+    "previewer"
+  ],
+  "categories": [
+    "Other"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
   "main": "./dist/extension.js",
-  "activationEvents": ["onCommand:markwise.openPreview"],
+  "activationEvents": [
+    "onCommand:markwise.openPreview"
+  ],
   "contributes": {
     "commands": [
       {
@@ -45,12 +56,19 @@
     "vscode:prepublish": "npm run build:engine && npm run copy-assets && npm run package"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "keytar", "@vscode/vsce-sign"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "keytar",
+      "@vscode/vsce-sign"
+    ]
   },
-  "dependencies": {},
+  "dependencies": {
+    "sanitize-html": "^2.17.5"
+  },
   "devDependencies": {
     "@types/mocha": "^10.0.7",
     "@types/node": "^22.0.0",
+    "@types/sanitize-html": "^2.16.1",
     "@types/vscode": "^1.85.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",

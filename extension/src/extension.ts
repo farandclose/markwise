@@ -1,22 +1,31 @@
 import * as vscode from 'vscode';
+import { openPreview } from './panel';
 
-// U2 scaffold: register the single command and open a placeholder panel so the activation +
-// packaging path is exercised end to end. U3 replaces the panel body with the real previewer
-// (engine-rendered document, notes rail, CSP/nonce, postMessage bridge).
+// Activation registers the single command. It opens the Markwise previewer for the active markdown
+// file in a panel beside the editor. Save (U4), file-watch refresh (U5), and handoff (U6) extend the
+// panel via the `extras` it accepts.
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('markwise.openPreview', () => {
-      const panel = vscode.window.createWebviewPanel(
-        'markwise.preview',
-        'Markwise',
-        vscode.ViewColumn.Beside,
-        { enableScripts: true }
-      );
-      panel.webview.html =
-        '<!doctype html><html><head><meta charset="utf-8" /></head>' +
-        '<body><p>Markwise preview (scaffold) - rendering arrives in U3.</p></body></html>';
+      const uri = activeMarkdownUri();
+      if (!uri) {
+        void vscode.window.showWarningMessage(
+          'Markwise: open a Markdown file, then run "Markwise: Open Preview".'
+        );
+        return undefined;
+      }
+      // Returned so callers (and integration tests) can reach the panel.
+      return openPreview(context, uri);
     })
   );
+}
+
+function activeMarkdownUri(): vscode.Uri | undefined {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) return undefined;
+  const doc = editor.document;
+  const isMarkdown = doc.languageId === 'markdown' || /\.(md|markdown)$/i.test(doc.uri.path);
+  return isMarkdown ? doc.uri : undefined;
 }
 
 export function deactivate(): void {
