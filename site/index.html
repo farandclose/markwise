@@ -397,25 +397,52 @@
 
   /* real thing */
   .real{border-top:1px solid var(--hairline-soft)}
-  .shot{border:1px solid var(--hairline);border-radius:14px;overflow:hidden;
-    box-shadow:0 30px 80px rgba(23,23,18,.16);margin:0 0 .8rem}
-  .shot img{display:block;width:100%;height:auto}
-  .shot-cap{font-size:.92rem;color:var(--dim);margin:0 0 3rem}
-  .real-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:clamp(2rem,5vw,4rem)}
-  .tools{margin:0}
-  .tool{display:grid;grid-template-columns:11rem 1fr;gap:1rem;padding:.75rem 0;align-items:baseline;
-    border-top:1px solid var(--hairline-soft)}
-  .tool:last-child{border-bottom:1px solid var(--hairline-soft)}
-  .tool .cmd{font-family:var(--mono);font-size:.85rem;color:var(--gold-deep);white-space:nowrap}
-  .tool p{font-size:.97rem;margin:0;color:var(--dim)}
-  .tool p code{font-family:var(--mono);font-size:.85em;color:var(--ink)}
-  .promise{margin:0 0 1.6rem}
-  .promise h3{font-family:var(--serif);font-weight:600;font-size:1.2rem;margin:0 0 .35rem;color:var(--ink)}
-  .promise h3 .tick{color:var(--green-deep);margin-right:.4rem}
-  .promise p{margin:0;color:var(--dim);font-size:.98rem}
-  .whynot{margin:2.2rem 0 0;padding:0;list-style:none}
-  .whynot li{padding:.55rem 0;border-top:1px solid var(--hairline-soft);font-size:.95rem;color:var(--dim)}
-  .whynot b{color:var(--ink);font-weight:700}
+  /* section 3: the clean <-> in-file flip (one file, two faces) */
+  .faceswitch{display:flex;justify-content:center;gap:.25rem;width:max-content;margin:.6rem auto 0;
+    background:var(--stage-3);border:1px solid var(--hairline-soft);border-radius:999px;padding:.3rem}
+  .faceswitch button{font:inherit;font-family:var(--sans);font-size:.9rem;font-weight:600;border:0;
+    background:transparent;color:var(--dim);padding:.5rem 1.15rem;border-radius:999px;cursor:pointer;
+    transition:background .18s,color .18s,box-shadow .18s}
+  .faceswitch button[aria-pressed="true"]{background:var(--stage-2);color:var(--ink);
+    box-shadow:0 1px 2px rgba(20,22,26,.08),0 2px 8px rgba(20,22,26,.06)}
+  .flipwrap{max-width:960px;margin:1.8rem auto 0;perspective:3200px}
+  .flipper{display:grid;transform-style:preserve-3d;will-change:transform;
+    transition:transform .8s var(--ease-quint)}
+  .flipper[data-face="raw"]{transform:rotateY(180deg)}
+  .fcard{grid-area:1/1;display:flex;flex-direction:column;overflow:hidden;border-radius:15px;
+    border:1px solid var(--paper-line);background:var(--paper);box-shadow:0 36px 90px rgba(23,23,18,.18);
+    backface-visibility:hidden;-webkit-backface-visibility:hidden}
+  .fcard.is-back{transform:rotateY(180deg)}
+  .fbar{display:flex;align-items:center;gap:.6rem;padding:.7rem 1.15rem;background:#ddca9f;
+    border-bottom:1px solid var(--paper-line);font-family:var(--mono);font-size:.78rem;letter-spacing:.05em}
+  .fdots{display:flex;gap:.42rem}
+  .fdots i{width:.72rem;height:.72rem;border-radius:50%;background:rgba(80,58,12,.22)}
+  .ffile{color:#635733}
+  .flabel{margin-left:auto;font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--paper-line-2);font-weight:500}
+  .fbody{padding:1.55rem 2.3rem;min-height:17rem;flex:1}
+  /* clean face: serif paper document */
+  .fdoc{font-family:var(--serif);color:var(--paper-ink);max-width:42rem}
+  .fdoc .fh{font-weight:700;font-size:1.34rem;margin:0 0 .7rem}
+  .fdoc p + .fh{margin-top:1.35rem}
+  .fdoc .fh .hash{font-family:var(--mono);font-size:.86rem;color:var(--paper-line-2);margin-right:.45rem}
+  .fdoc p{font-size:1.16rem;line-height:1.78;margin:0 0 .82rem}
+  .fdoc p:last-child{margin-bottom:0}
+  .an{border-radius:3px;padding:0 .12em}
+  .an.cmt{background:var(--mark)}
+  .an.rep .o,.an.del{background:var(--red-soft);color:var(--red);text-decoration:line-through;text-decoration-color:#b87f63}
+  .an.rep .n,.an.ins{background:rgba(28,128,71,.18);color:var(--green-ink)}
+  .an.rep .n{margin-left:.3em}
+  /* in-file face: the raw markdown bytes */
+  .fraw{font-family:var(--mono);font-size:.9rem;line-height:1.72;white-space:pre-wrap;margin:0;color:var(--paper-ink)}
+  .fraw .mk{color:var(--paper-line-2)}
+  .fraw .blk{color:var(--paper-soft)}
+  .fraw .k{color:var(--gold-deep)}
+  .fraw .v{color:var(--green-deep)}
+  .fraw .id{color:var(--red);font-weight:600}
+  .fraw .hl{background:var(--mark);border-radius:2px;padding:0 .1em}
+  .fnote{text-align:center;font-size:1rem;color:var(--dim);max-width:44em;margin:.9rem auto 0}
+  .fnote b{color:var(--ink);font-weight:600}
 
   /* get started */
   .start{border-top:1px solid var(--hairline-soft)}
@@ -486,7 +513,7 @@
   @media (prefers-reduced-motion:reduce){
     .modal-scrim,.modal-card,
     .modal.is-closing .modal-scrim,.modal.is-closing .modal-card{animation:none}
-    .hw-card,.hw-resolved,.hw-anchor .o,.hw-anchor .n{transition:none}
+    .hw-card,.hw-resolved,.hw-anchor .o,.hw-anchor .n,.flipper{transition:none}
     .hw-caret,.hero-tcur{animation:none}
     .hero-doc,.hero-screen,.hero-card,.hero-handoff,.hero-addressed,.hb-docpop,.hero-term,
     .hero-anchor .o,.hero-anchor .n,.hero-replay,.hcap,h1 .hl::before,.hb-text .w{transition:none}
@@ -662,40 +689,66 @@
 
   <section class="real">
     <div class="shell">
-      <h2>The previewer, on a real brief</h2>
-      <p class="lede">Not a mockup: this is <code style="font-family:var(--mono);font-size:.9em">markwise preview</code> running on an agent-written doc, with six open notes.</p>
-      <div class="shot">
-        <img src="assets/previewer-light.png" width="1200" height="800" loading="lazy"
-          alt="The Markwise previewer: a product brief with inline suggested edits (struck text, replacements, green inserts, comment highlights) and a rail of six notes labelled replace, insert, comment, and delete, plus a Hand to agent button.">
+      <h2>It all stays in the file</h2>
+      <p class="lede">Every comment, every suggested edit, every reply saves inside the markdown itself. No database, no account, no service holding your words. It runs on your machine and travels with your repo.</p>
+
+      <div class="faceswitch" role="group" aria-label="View the file">
+        <button data-face-btn="clean" aria-pressed="true" type="button">Clean preview</button>
+        <button data-face-btn="raw" aria-pressed="false" type="button">In-file truth</button>
       </div>
-      <p class="shot-cap">Inline suggested edits, anchored comments, a notes rail, and a "Hand to agent" button that bundles every open note. Three themes; this is Light.</p>
-      <div class="real-grid">
-        <div>
-          <div class="tools">
-            <div class="tool"><span class="cmd">markwise preview</span><p>Review in the browser: comment, reply, suggest edits, resolve.</p></div>
-            <div class="tool"><span class="cmd">markwise prompt</span><p>Bundles the doc and every open note into an instruction block any model can act on.</p></div>
-            <div class="tool"><span class="cmd">markwise status</span><p>Whose turn is it? Open vs resolved, waiting on you vs waiting on the agent.</p></div>
-            <div class="tool"><span class="cmd">markwise lint</span><p>24 rules guard the review data; <code>--fix</code> repairs mechanical drift, never prose.</p></div>
-            <div class="tool"><span class="cmd">markwise export</span><p>A clean copy with every trace of review stripped. The original is never touched.</p></div>
+      <p class="fnote">Same file, both ways. Flip between the <b>clean preview</b> everyone sees and the <b>in-file truth</b> it's stored as.</p>
+
+      <div class="flipwrap">
+        <div class="flipper" id="mw-flipper" data-face="clean">
+
+          <!-- FRONT: what everyone else sees -->
+          <div class="fcard fcard-front" aria-hidden="false">
+            <div class="fbar">
+              <span class="fdots"><i></i><i></i><i></i></span>
+              <span class="ffile">launch-plan.md</span>
+              <span class="flabel">What everyone else sees</span>
+            </div>
+            <div class="fbody">
+              <div class="fdoc">
+                <p class="fh"><span class="hash">##</span>Rollout</p>
+                <p>We will launch the partner beta <span class="an rep"><span class="o">in Q4 2026</span><span class="n">in H2 2026</span></span>, with <span class="an cmt">mobile following in the new year</span>.</p>
+                <p>The private beta opens to our first design partners<span class="an ins">, hand-picked from the waitlist,</span> before the public window.</p>
+                <p class="fh"><span class="hash">##</span>Pricing</p>
+                <p>Partner pricing holds through launch<span class="an del"> no matter what</span>; we revisit it after the first cohort ships.</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div>
-          <div class="promise">
-            <h3><span class="tick">&#10003;</span>In-file truth</h3>
-            <p>The document and all its review state are one self-contained artifact. No sidecar files, no database, no platform.</p>
+
+          <!-- BACK: what stays with you -->
+          <div class="fcard is-back fcard-back" aria-hidden="true">
+            <div class="fbar">
+              <span class="fdots"><i></i><i></i><i></i></span>
+              <span class="ffile">launch-plan.md</span>
+              <span class="flabel">What stays with you</span>
+            </div>
+            <div class="fbody">
+<pre class="fraw">## Rollout
+
+We will launch the partner beta <span class="mk">&lt;!-- mw:<span class="id">e1</span> --&gt;</span>in H2 2026<span class="mk">&lt;!-- /mw:<span class="id">e1</span> --&gt;</span>, with <span class="mk">&lt;!-- mw:<span class="id">c1</span> --&gt;</span><span class="hl">mobile following in the new year</span><span class="mk">&lt;!-- /mw:<span class="id">c1</span> --&gt;</span>.
+
+The private beta opens to our first design partners<span class="mk">&lt;!-- mw:<span class="id">i1</span> --&gt;</span> before the public window.
+
+## Pricing
+
+Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id">d1</span> --&gt;</span> no matter what<span class="mk">&lt;!-- /mw:<span class="id">d1</span> --&gt;</span>; we revisit it after the first cohort ships.
+
+<span class="blk">&lt;!-- mw:log v=1</span>
+{<span class="k">"id"</span>:<span class="v">"e1"</span>,<span class="k">"type"</span>:<span class="v">"replace"</span>,<span class="k">"state"</span>:<span class="v">"resolved"</span>,<span class="k">"text"</span>:<span class="v">"in H2 2026"</span>,<span class="k">"thread"</span>:[{<span class="k">"by"</span>:<span class="v">"you"</span>,<span class="k">"body"</span>:<span class="v">"We agreed H2, not Q4."</span>},{<span class="k">"by"</span>:<span class="v">"agent"</span>,<span class="k">"body"</span>:<span class="v">"Changed to H2 2026."</span>}]}
+{<span class="k">"id"</span>:<span class="v">"c1"</span>,<span class="k">"type"</span>:<span class="v">"comment"</span>,<span class="k">"state"</span>:<span class="v">"open"</span>,<span class="k">"thread"</span>:[{<span class="k">"by"</span>:<span class="v">"you"</span>,<span class="k">"body"</span>:<span class="v">"Realistic for mobile?"</span>}]}
+{<span class="k">"id"</span>:<span class="v">"i1"</span>,<span class="k">"type"</span>:<span class="v">"insert"</span>,<span class="k">"state"</span>:<span class="v">"open"</span>,<span class="k">"text"</span>:<span class="v">", hand-picked from the waitlist,"</span>,<span class="k">"thread"</span>:[]}
+{<span class="k">"id"</span>:<span class="v">"d1"</span>,<span class="k">"type"</span>:<span class="v">"delete"</span>,<span class="k">"state"</span>:<span class="v">"open"</span>,<span class="k">"thread"</span>:[{<span class="k">"by"</span>:<span class="v">"you"</span>,<span class="k">"body"</span>:<span class="v">"Drop the absolute - legal flagged it."</span>}]}
+<span class="blk">--&gt;</span></pre>
+            </div>
           </div>
-          <div class="promise">
-            <h3><span class="tick">&#10003;</span>Clean preview</h3>
-            <p>Review data hides in HTML comments. GitHub, VS Code, and every normal markdown preview render the document clean.</p>
-          </div>
-          <ul class="whynot">
-            <li><b>Not Google Docs:</b> your doc would leave the repo, and the agent loses it.</li>
-            <li><b>Not PR review:</b> feedback would anchor to diffs in the forge, not the artifact.</li>
-            <li><b>Not CriticMarkup:</b> editorial syntax, not a review loop - and it leaks into previews.</li>
-            <li><b>Not chat:</b> describing locations instead of pointing at them.</li>
-          </ul>
+
         </div>
       </div>
+
     </div>
   </section>
 
@@ -781,6 +834,25 @@
         } else { fallback(); }
       });
     });
+
+    // section 3: clean <-> in-file flip
+    (function(){
+      var flip = document.getElementById('mw-flipper');
+      if(flip){
+        var front = flip.querySelector('.fcard-front');
+        var back = flip.querySelector('.fcard-back');
+        var faceBtns = document.querySelectorAll('[data-face-btn]');
+        faceBtns.forEach(function(b){
+          b.addEventListener('click', function(){
+            var v = b.getAttribute('data-face-btn');
+            faceBtns.forEach(function(x){ x.setAttribute('aria-pressed', x.getAttribute('data-face-btn')===v ? 'true' : 'false'); });
+            flip.setAttribute('data-face', v);
+            if(front) front.setAttribute('aria-hidden', v==='clean' ? 'false' : 'true');
+            if(back) back.setAttribute('aria-hidden', v==='clean' ? 'true' : 'false');
+          });
+        });
+      }
+    })();
 
     // how-it-works: drive the pinned document's state from the step in the viewport center
     var how = document.querySelector('.how');
