@@ -1,0 +1,22 @@
+# Everything not listed here ships in the .vsix. Only the bundled output (dist/) and the manifest /
+# docs are needed - source, tests, build config, and node_modules are all excluded because esbuild
+# inlines the engine and markdown-it into dist/extension.js.
+.vscode/**
+.vscode-test/**
+.vscode-test.mjs
+src/**
+test/**
+out/**
+scripts/**
+media/**
+node_modules/**
+esbuild.mjs
+esbuild.test.mjs
+vitest.config.ts
+tsconfig.json
+pnpm-lock.yaml
+.gitignore
+.vscodeignore
+**/*.ts
+**/*.map
+**/.DS_Store

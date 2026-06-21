@@ -38,3 +38,28 @@ export type {
   Finding,
   Severity,
 } from './types.js';
+
+// Previewer engine surface (DECISIONS D40: exposed at first reuse, for the VS Code extension).
+// These are the pure render / payload / mutate / handoff functions the extension imports to drive
+// a webview in place of the localhost HTTP server. renderDocumentHtml stays internal - callers use
+// buildDocPayload, which wraps it.
+export { buildDocPayload } from './preview/payload.js';
+export { createNote, appendReply, resolveNote, discardNote, NoteMutationError } from './preview/mutate.js';
+export { persistDocument } from './preview/persist.js';
+export type { PersistContext } from './preview/persist.js';
+export { buildHandoffText } from './preview/handoff.js';
+export type { HandoffInput } from './preview/handoff.js';
+export type { DocPayload, NoteView, HandoffInfo } from './preview/types.js';
+
+// Briefing assembler. The VS Code extension composes the same briefing `markwise prompt` emits -
+// the instruction block + the notes waiting on the agent + the document - entirely in-process, so
+// the editor handoff needs no separately installed CLI (KTD5, R8). The instruction template is
+// supplied by the caller (the extension bundles its own copy of AGENT_PROMPT.md).
+export { buildPromptOutput } from './prompt.js';
+export type { PromptInput, PromptNoteRef } from './prompt.js';
+
+// End-of-line I/O helpers. The extension's "document is not open in an editor" save path reads and
+// writes the file off disk exactly as the localhost server does, so it reuses the same LF
+// normalization and EOL re-application instead of re-implementing the I/O boundary (KTD3).
+export { readDocument, writeDocument, detectEol, toLf, applyEol } from './eol.js';
+export type { Eol } from './eol.js';
