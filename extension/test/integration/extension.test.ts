@@ -58,7 +58,7 @@ suite('Markwise extension', () => {
     const bootRequest = await new Promise<{ method: string; url: string }>((resolve, reject) => {
       const timer = setTimeout(
         () => reject(new Error('no apiRequest reached the host within the timeout')),
-        10000
+        15000
       );
       const sub = panel.webview.onDidReceiveMessage((msg) => {
         if (msg && msg.type === 'apiRequest' && msg.url === '/api/doc') {

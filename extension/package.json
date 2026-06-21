@@ -63,6 +63,10 @@
     "pretest:integration": "node esbuild.test.mjs && npm run copy-assets",
     "test:integration": "vscode-test",
     "test": "npm run test:unit",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "package:vsix": "vsce package --no-dependencies",
+    "publish:vsce": "vsce publish --no-dependencies",
+    "publish:ovsx": "ovsx publish --no-dependencies",
     "vscode:prepublish": "npm run build:engine && npm run copy-assets && npm run package"
   },
   "pnpm": {
