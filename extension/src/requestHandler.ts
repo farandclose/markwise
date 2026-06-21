@@ -32,10 +32,13 @@ export interface HandlerDeps {
   now: () => string;
   /**
    * The shared persist (U1's persistDocument wrapped with VS Code I/O closures by U4): version-gate
-   * against the same surface, transform, fixText, lintText, write. Absent in U3 (no save wiring yet)
-   * -> mutations return 503.
+   * against the same surface, transform, fixText, lintText, write. May be async (the open-editor path
+   * writes via WorkspaceEdit). Absent in U3 (no save wiring yet) -> mutations return 503.
    */
-  persist?: (expectedVersion: string | undefined, transform: (src: string) => string) => DocPayload;
+  persist?: (
+    expectedVersion: string | undefined,
+    transform: (src: string) => string
+  ) => DocPayload | Promise<DocPayload>;
   /** The in-process handoff (U6). Absent until wired -> /api/handoff returns 503. */
   handoff?: () => Promise<ApiResult>;
 }
@@ -81,7 +84,7 @@ export async function handleApiRequest(
         const text = typeof body.text === 'string' ? body.text : undefined;
         const now = deps.now();
         let createdId = '';
-        const payload = deps.persist(req.version, (src) => {
+        const payload = await deps.persist(req.version, (src) => {
           const r = createNote(src, { kind, start, end, body: noteBody, at: now, type, text });
           createdId = r.id;
           return r.output;
@@ -98,11 +101,11 @@ export async function handleApiRequest(
         let payload: DocPayload;
         if (verb === 'reply') {
           const replyBody = typeof body.body === 'string' ? body.body : '';
-          payload = deps.persist(req.version, (src) => appendReply(src, id, replyBody, now));
+          payload = await deps.persist(req.version, (src) => appendReply(src, id, replyBody, now));
         } else if (verb === 'discard') {
-          payload = deps.persist(req.version, (src) => discardNote(src, id));
+          payload = await deps.persist(req.version, (src) => discardNote(src, id));
         } else {
-          payload = deps.persist(req.version, (src) => resolveNote(src, id, now));
+          payload = await deps.persist(req.version, (src) => resolveNote(src, id, now));
         }
         return { ok: true, status: 200, body: sanitized(payload) };
       }

@@ -11,9 +11,9 @@ scripts/**
 media/**
 node_modules/**
 esbuild.mjs
+esbuild.test.mjs
 vitest.config.ts
 tsconfig.json
-tsconfig.test.json
 pnpm-lock.yaml
 .gitignore
 .vscodeignore

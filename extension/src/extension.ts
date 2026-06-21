@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { openPreview } from './panel';
+import { makePersist } from './save';
 
 // Activation registers the single command. It opens the Markwise previewer for the active markdown
 // file in a panel beside the editor. Save (U4), file-watch refresh (U5), and handoff (U6) extend the
@@ -15,7 +16,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return undefined;
       }
       // Returned so callers (and integration tests) can reach the panel.
-      return openPreview(context, uri);
+      return openPreview(context, uri, { persist: makePersist(uri) });
     })
   );
 }

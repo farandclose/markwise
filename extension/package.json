@@ -50,7 +50,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "pretest:integration": "tsc -p tsconfig.test.json && npm run copy-assets",
+    "pretest:integration": "node esbuild.test.mjs && npm run copy-assets",
     "test:integration": "vscode-test",
     "test": "npm run test:unit",
     "vscode:prepublish": "npm run build:engine && npm run copy-assets && npm run package"

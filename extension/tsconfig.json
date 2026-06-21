@@ -16,5 +16,5 @@
       "markwise": ["../dist/index.d.ts"]
     }
   },
-  "include": ["src/**/*", "test/unit/**/*"]
+  "include": ["src/**/*", "test/unit/**/*", "test/integration/**/*"]
 }
