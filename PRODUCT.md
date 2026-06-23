@@ -1,17 +1,5 @@
 # Product
 
-## Register
-
-product
-
-## Users
-
-Reviewers of agent-written markdown: product managers and small product teams who already live in
-markdown. Their context is a review pass on a draft an agent produced. The job to be done: read the
-document, leave precise notes anchored to exact spans, and hand the file back to a fresh agent that
-revises and responds. The reviewer wants commenting to feel as fluid as Google Docs while every bit
-of review state stays inside the file.
-
 ## Product Purpose
 
 Markwise is a human-agent review layer for markdown. A reviewer leaves anchored, structured notes on
@@ -20,6 +8,14 @@ in the file itself, as HTML comments that stay invisible in normal markdown prev
 previewer is the reviewer's surface: a clean read of the document plus a notes rail. Success is a
 reviewer commenting and handing off without ever leaving the document or thinking about the storage
 format.
+
+## Users
+
+Reviewers of agent-written markdown: product managers and small product teams who already live in
+markdown. Their context is a review pass on a draft an agent produced. The job to be done: read the
+document, leave precise notes anchored to exact spans, and hand the file back to a fresh agent that
+revises and responds. The reviewer wants commenting to feel as fluid as Google Docs while every bit
+of review state stays inside the file.
 
 ## Brand Personality
 
