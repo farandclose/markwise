@@ -132,6 +132,19 @@
   });
   window.addEventListener('resize', scheduleCaret);
 
+  // Re-solve the anchor-aligned rail when the viewport changes (line wraps move anchor offsets, and
+  // crossing the 820px breakpoint flips between the floating margin and the flow stack). rAF-debounced
+  // so a continuous drag re-lays out at most once per frame; instant (no slide) - a resize is not a
+  // reviewer-caused activation.
+  var railResizeRaf = 0;
+  window.addEventListener('resize', function () {
+    if (railResizeRaf) return;
+    railResizeRaf = window.requestAnimationFrame(function () {
+      railResizeRaf = 0;
+      layoutRail({ animate: false });
+    });
+  });
+
   function idSel(id) {
     const safe = window.CSS && CSS.escape ? CSS.escape(id) : id;
     return '[data-mw-id="' + safe + '"]';
@@ -281,6 +294,11 @@
       const card = document.createElement('section');
       card.className = 'mw-card mw-type-' + note.type;
       card.dataset.mwId = note.id;
+      // The card is the rail's primary control: make it a real button so it is keyboard-operable and
+      // announces its open/closed state (S6). aria-expanded is kept in sync by activate().
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-expanded', 'false');
 
       const head = document.createElement('header');
       head.className = 'mw-card-head';
@@ -300,6 +318,15 @@
         e.stopPropagation();
         openDiscardConfirm(card, note.id, noun);
       });
+      // A quiet thread-count once a note has a back-and-forth, so a reviewer sees there is a
+      // conversation without opening the card (S5). Hidden for a lone opening note.
+      if (note.thread.length > 1) {
+        const count = document.createElement('span');
+        count.className = 'mw-card-count';
+        count.textContent = String(note.thread.length);
+        count.setAttribute('aria-label', note.thread.length + ' messages');
+        head.appendChild(count);
+      }
       head.appendChild(discardBtn);
 
       const threadEl = document.createElement('div');
@@ -364,8 +391,24 @@
       actions.appendChild(verbs);
       card.appendChild(actions);
 
-      card.addEventListener('click', function () {
-        activate(note.id);
+      // Click toggles: open an inactive card (and bring its prose into view, S3) or close the active
+      // one (S4). Enter/Space on the focused card does the same (S6).
+      function toggleCard() {
+        activate(note.id === activeId ? null : note.id, { scrollDoc: true });
+      }
+      card.addEventListener('click', toggleCard);
+      card.addEventListener('keydown', function (e) {
+        if (e.target !== card) return; // inner textarea/buttons keep their own keys
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCard(); }
+      });
+      // Hover peek (S2): lightly light the anchored prose while the cursor rests on a card, short of
+      // committing the active deep tint. Skipped for the already-active note (it is deeper already).
+      card.addEventListener('mouseenter', function () {
+        if (note.id === activeId) return;
+        docEl.querySelectorAll(idSel(note.id)).forEach(function (el) { el.classList.add('mw-peek'); });
+      });
+      card.addEventListener('mouseleave', function () {
+        docEl.querySelectorAll(idSel(note.id)).forEach(function (el) { el.classList.remove('mw-peek'); });
       });
       railEl.appendChild(card);
     });
@@ -377,18 +420,145 @@
     }
   }
 
-  function activate(id) {
+  function activate(id, opts) {
+    opts = opts || {};
+    var animate = opts.animate !== false;
     activeId = id;
     if (id != null && body.classList.contains('mw-clean')) reveal(true);
     document.querySelectorAll('.active').forEach(function (el) {
       el.classList.remove('active');
     });
-    if (id == null) return;
-    document.querySelectorAll(idSel(id)).forEach(function (el) {
-      el.classList.add('active');
+    // aria-expanded tracks open/closed on every card (S6).
+    railEl.querySelectorAll('.mw-card').forEach(function (c) {
+      c.setAttribute('aria-expanded', String(c.dataset.mwId === id));
     });
-    const activeCard = railEl.querySelector('.mw-card' + idSel(id));
-    if (activeCard) activeCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (id != null) {
+      document.querySelectorAll(idSel(id)).forEach(function (el) {
+        el.classList.add('active');
+      });
+    }
+    // Re-solve the rail: the active card grew (or, on close, shrank), so neighbors must reflow around
+    // it. The card no longer scrolls itself into rail view - it is anchor-positioned, so it already
+    // sits beside its text; the doc scroll below brings that shared band into the viewport.
+    layoutRail({ animate: animate });
+    // Forward bond (S3): only when the activation came from the rail (a card click / keyboard open),
+    // bring the anchored prose into view and flash it. The reverse bond (clicking the prose) and the
+    // live-poll repaint pass no scrollDoc, so neither jolts the column under the reviewer.
+    if (id != null && opts.scrollDoc) revealAnchor(id);
+  }
+
+  // Bring the anchored prose into view - but only when it is not already comfortably visible, so a
+  // click on an on-screen note never jolts the column - then fire a one-shot focus pulse on it.
+  function revealAnchor(id) {
+    const el = docEl.querySelector(idSel(id));
+    if (!el) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const r = el.getBoundingClientRect();
+    const margin = 40;
+    if (r.top < margin || r.bottom > window.innerHeight - margin) {
+      el.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    }
+    flashAnchor(id);
+  }
+
+  // A brief neutral ring bloom over the anchored run(s), so the eye catches where the scroll landed.
+  // Reduced-motion disables the animation in CSS; the timeout still clears the class cleanly.
+  function flashAnchor(id) {
+    docEl.querySelectorAll('.mw-flash').forEach(function (el) { el.classList.remove('mw-flash'); });
+    const els = docEl.querySelectorAll(idSel(id));
+    els.forEach(function (el) {
+      void el.offsetWidth; // restart the animation if this run flashed a moment ago
+      el.classList.add('mw-flash');
+    });
+    window.setTimeout(function () {
+      els.forEach(function (el) { el.classList.remove('mw-flash'); });
+    }, 750);
+  }
+
+  // ---- Anchor-aligned rail layout (Google-Docs margin model) -----------------------------------
+  // Each card's vertical home is its anchored text: card top = anchor top, in rail-space. Because the
+  // rail and the document share the page scroll, (anchorTop - railTop) is scroll-invariant, so a
+  // card's position can be solved at any moment without racing the scroll animation. Overlaps resolve
+  // by pushing cards down a fixed gap (never overlapping or shrinking them); the active card pins to
+  // its exact anchor and its neighbors cascade away. Desktop only - the <=820px overlay is a fixed
+  // scroll context where anchor-space tops are meaningless, so it stays a normal flow stack.
+  var RAIL_GAP = 12;
+
+  function railIsFloating() {
+    return !(window.matchMedia && window.matchMedia('(max-width: 820px)').matches);
+  }
+
+  // Resolve each card to a top (in rail-space) from its anchor offset + a two-pass collision sweep,
+  // then a focused-priority pass. Returns items in solve order, or null when there is nothing to lay
+  // out. Reads getBoundingClientRect/offsetHeight synchronously (measure-then-place, no guessing).
+  function solveRail() {
+    var cards = Array.prototype.slice.call(railEl.querySelectorAll('.mw-card'));
+    if (!cards.length) return null;
+    var railTop = railEl.getBoundingClientRect().top;
+    var railBottom = docEl.clientHeight; // the rail spans the document; a card may live anywhere in it
+    var items = cards.map(function (el, i) {
+      var anchor = docEl.querySelector(idSel(el.dataset.mwId));
+      var ideal = anchor ? anchor.getBoundingClientRect().top - railTop : 0;
+      return { el: el, order: i, ideal: ideal, height: el.offsetHeight, active: el.classList.contains('active') };
+    });
+    items.sort(function (a, b) { return (a.ideal - b.ideal) || (a.order - b.order); });
+    items.forEach(function (it) { it.top = Math.max(0, it.ideal); });
+
+    // Pass 1: push each card down to clear the card above it.
+    for (var i = 1; i < items.length; i++) {
+      var minTop = items[i - 1].top + items[i - 1].height + RAIL_GAP;
+      if (items[i].top < minTop) items[i].top = minTop;
+    }
+    // Pass 2: if the stack overflowed the rail bottom, walk back up so the last card stays on-rail.
+    var last = items[items.length - 1];
+    if (railBottom && last.top + last.height > railBottom) {
+      last.top = Math.max(0, railBottom - last.height);
+      for (var j = items.length - 2; j >= 0; j--) {
+        var maxTop = items[j + 1].top - items[j].height - RAIL_GAP;
+        if (items[j].top > maxTop) items[j].top = Math.max(0, maxTop); else break;
+      }
+    }
+    // Focused priority: pin the active card to its exact anchor; cascade neighbors up and down.
+    var f = -1;
+    for (var k = 0; k < items.length; k++) { if (items[k].active) { f = k; break; } }
+    if (f !== -1) {
+      var fMax = railBottom ? railBottom - items[f].height : items[f].ideal;
+      items[f].top = Math.max(0, Math.min(items[f].ideal, fMax));
+      for (var u = f - 1; u >= 0; u--) {
+        var cap = items[u + 1].top - items[u].height - RAIL_GAP;
+        if (items[u].top > cap) items[u].top = Math.max(0, cap);
+      }
+      for (var d = f + 1; d < items.length; d++) {
+        var floor = items[d - 1].top + items[d - 1].height + RAIL_GAP;
+        if (items[d].top < floor) items[d].top = floor;
+      }
+    }
+    return items;
+  }
+
+  // Apply the solve as translateY on each card. animate:false suppresses the CSS transition (first
+  // reveal, repaint, resize - cards land placed, no slide); animate:true lets the ~180ms transform
+  // transition carry the reflow (an activation the reviewer caused). reduced-motion snaps either way
+  // (the .mw-card transition is disabled under prefers-reduced-motion).
+  function layoutRail(opts) {
+    opts = opts || {};
+    if (!body.classList.contains('mw-revealed')) return;
+    if (!railIsFloating()) {
+      // Narrow overlay: drop any desktop transforms and let the flow stack stand.
+      railEl.querySelectorAll('.mw-card, .mw-draft').forEach(function (el) { el.style.transform = ''; });
+      return;
+    }
+    var items = solveRail();
+    if (!items) return;
+    var animate = opts.animate !== false;
+    items.forEach(function (it) {
+      if (!animate) it.el.style.transition = 'none';
+      it.el.style.transform = 'translateY(' + Math.round(it.top) + 'px)';
+    });
+    if (!animate) {
+      void railEl.offsetWidth; // commit the jump, then restore the CSS transition for later reflows
+      items.forEach(function (it) { it.el.style.transition = ''; });
+    }
   }
 
   function reveal(on) {
@@ -396,6 +566,7 @@
     body.classList.toggle('mw-revealed', on);
     counterBtn.setAttribute('aria-pressed', String(on));
     if (!on) { activate(null); clearAnchor(); }
+    else layoutRail({ animate: false }); // first reveal: cards land placed, no slide
   }
 
   function clearPill() {
@@ -602,6 +773,7 @@
         b.setAttribute('aria-checked', String(b.dataset.themeId === name));
       });
     }
+    layoutRail({ animate: false }); // a theme can nudge metrics; keep cards aligned (no-op while clean)
   }
   function closeThemeMenu() {
     if (!themeMenu || themeMenu.hidden) return;
@@ -854,11 +1026,12 @@
 
     var card = document.createElement('section');
     card.className = 'mw-draft';
-    // Align the draft to the selection's vertical position (Google-Docs-style) when the rail is
-    // otherwise empty; with existing notes present, keep it at the top to avoid overlap.
-    if (target.rect && !railEl.querySelector('.mw-card')) {
+    // Float the draft at its anchored selection's vertical position - the same anchor-alignment the
+    // committed cards use (it rides above them on z-index). Skipped on the narrow overlay, where the
+    // rail is a flow stack.
+    if (target.rect && railIsFloating()) {
       var offset = Math.max(0, Math.round(target.rect.top - railEl.getBoundingClientRect().top));
-      card.style.marginTop = offset + 'px';
+      card.style.transform = 'translateY(' + offset + 'px)';
     }
     var ta = document.createElement('textarea');
     ta.placeholder = 'Write a comment…';
@@ -925,11 +1098,13 @@
       handoffBtn.disabled = !waiting;
       handoffBtn.title = waiting ? '' : 'No notes waiting on the agent';
     }
-    // Re-apply the active note if it survived the repaint; otherwise clear it.
+    // Re-apply the active note if it survived the repaint; otherwise clear it. animate:false so a
+    // live-poll repaint re-places the cards instantly (no slide) and never scrolls the column.
     if (activeId != null && railEl.querySelector('.mw-card' + idSel(activeId))) {
-      activate(activeId);
+      activate(activeId, { animate: false });
     } else {
       activeId = null;
+      layoutRail({ animate: false });
     }
   }
 

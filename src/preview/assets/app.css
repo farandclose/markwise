@@ -303,7 +303,21 @@ html, body {
   width: var(--mw-rail-w);
   display: none;
 }
-.mw-revealed .mw-rail { display: block; }
+/* Anchor-aligned rail (desktop): the revealed rail is a positioning context spanning the document's
+   height (the grid stretches it to the row), and each card floats at its anchored text's vertical
+   position - set by app.js as translateY off top:0. Cards leave normal flow so repositioning never
+   reflows the reading column ("the document never moves"). The <=820px overlay opts back out below. */
+.mw-revealed .mw-rail { display: block; position: relative; }
+.mw-revealed .mw-card,
+.mw-revealed .mw-draft {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin-bottom: 0;
+}
+.mw-card.active { z-index: 2; } /* the tall, focused card rides above its neighbors during reflow */
+.mw-draft { z-index: 3; }       /* a compose card sits above the committed cards */
 
 /* Mid widths: drop the left spacer. The rail track stays reserved, so there is still no shift. */
 @media (max-width: 1240px) {
@@ -328,6 +342,14 @@ html, body {
     box-shadow: -8px 0 24px rgba(0, 0, 0, 0.08);
     padding: 16px;
     z-index: 4;
+  }
+  /* The fixed overlay is its own scroll context: anchor-space tops don't apply. Opt cards back into a
+     normal flow stack (and defeat any stale inline translateY left over from the desktop layout). */
+  .mw-revealed .mw-card,
+  .mw-revealed .mw-draft {
+    position: relative;
+    transform: none !important;
+    margin-bottom: 12px;
   }
 }
 
@@ -404,6 +426,28 @@ html, body {
   background: color-mix(in srgb, var(--mw-insert) 30%, transparent);
 }
 
+/* Hover peek (S2): the rail-to-prose half of the bond. A card under the cursor lights its anchored
+   run to a tint BETWEEN resting and the active deep, so a hover previews the selection without
+   committing it. Scoped to revealed mode and :not(.active) so it never overpowers the selected note;
+   rides the .mw-span background transition for a quiet ease. */
+.mw-revealed .mw-span.mw-type-comment.mw-peek:not(.active) { background: color-mix(in srgb, var(--mw-comment-deep) 55%, var(--mw-comment)); }
+.mw-revealed .mw-span.mw-type-replace.mw-peek:not(.active) { background: color-mix(in srgb, var(--mw-replace-deep) 55%, var(--mw-replace)); }
+.mw-revealed .mw-span.mw-type-delete.mw-peek:not(.active)  { background: color-mix(in srgb, var(--mw-delete-deep) 55%, var(--mw-delete)); }
+.mw-revealed .mw-replace-text.mw-peek:not(.active) { background: color-mix(in srgb, var(--mw-replace-deep) 55%, var(--mw-replace)); }
+.mw-revealed .mw-point.mw-type-insert.mw-peek:not(.active) { background: color-mix(in srgb, var(--mw-insert) 26%, transparent); }
+.mw-revealed .mw-point.mw-type-comment.mw-peek:not(.active) { outline: 2px solid color-mix(in srgb, var(--mw-insert) 55%, transparent); outline-offset: 1px; }
+
+/* Focus pulse (S3): a one-shot neutral ring bloom on the anchored run when a card is opened from the
+   rail, so the eye catches where the scroll landed. State-conveying only, ~750ms, reduced-motion-safe
+   (the class is still cleared by a timeout when the animation is suppressed). */
+@keyframes mw-flash {
+  0%   { box-shadow: 0 0 0 0 var(--mw-focus-ring); }
+  25%  { box-shadow: 0 0 0 4px var(--mw-focus-ring); }
+  100% { box-shadow: 0 0 0 9px transparent; }
+}
+.mw-revealed .mw-flash { animation: mw-flash 750ms ease-out; border-radius: 3px; }
+@media (prefers-reduced-motion: reduce) { .mw-flash { animation: none; } }
+
 /* --- P3 motion: quiet, state-conveying only, 150-200ms ease-out, reduced-motion-safe (PRODUCT.md
    restraint - no choreography, no bounce, no per-card stagger). --- */
 /* 1. Reveal crossfade: highlights settle in (transparent -> tint) rather than snapping on; the rail
@@ -413,10 +457,14 @@ html, body {
 @keyframes mw-fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 /* 2. Card <-> highlight bond: activating either end eases both ends together (the highlight to its
    deep tint via the .mw-span transition above, the card's border + shadow here). */
-.mw-card { transition: border-color 150ms ease, box-shadow 150ms ease; }
-/* 3. Resolve reward: the card slides out before the repaint removes it (JS adds .mw-resolving). */
+/* Reflow settle (anchor-aligned rail): a card eases to its new y on a single quiet transform - one
+   uniform curve, no stagger/spring. app.js suppresses this on first paint / repaint / resize (cards
+   land placed) and only lets it run for a reviewer-caused activation. reduced-motion snaps (below). */
+.mw-card { transition: transform 180ms ease-out, border-color 150ms ease, box-shadow 150ms ease; }
+/* 3. Resolve reward: the card fades out before the repaint removes it (JS adds .mw-resolving). Opacity
+   only - the card carries an anchor-positioning translateY, so an animated transform would yank it. */
 .mw-card.mw-resolving { animation: mw-resolve-out 220ms ease-out forwards; overflow: hidden; pointer-events: none; }
-@keyframes mw-resolve-out { to { opacity: 0; transform: translateX(10px); } }
+@keyframes mw-resolve-out { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .mw-span, .mw-card { transition: none; }
   .mw-revealed .mw-rail, .mw-card.mw-resolving, .mw-discard-overlay { animation: none; }
@@ -432,7 +480,15 @@ html, body {
   cursor: pointer;
 }
 .mw-card.active { border-color: var(--mw-card-active-border); box-shadow: var(--mw-shadow-card); }
-.mw-card-head { display: flex; gap: 8px; align-items: baseline; }
+/* Hover affordance (S1): a card reads as clickable. Held strictly below the active ink border (a
+   muted line, not ink) so a hovered card never competes with the selected one; eases via the
+   border-color transition declared on .mw-card above. */
+.mw-card:not(.active):hover { border-color: var(--mw-muted); }
+/* Keyboard focus (S6): the same neutral ring the rest of the chrome uses - the cards were the one
+   gap in the focus vocabulary. Keep the active card's lift when it is also focused. */
+.mw-card:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--mw-focus-ring); }
+.mw-card.active:focus-visible { box-shadow: 0 0 0 3px var(--mw-focus-ring), var(--mw-shadow-card); }
+.mw-card-head { display: flex; gap: 8px; align-items: flex-start; }
 .mw-card-type {
   font-size: 11px;
   text-transform: uppercase;
@@ -443,7 +499,21 @@ html, body {
   padding: 1px 7px;
   flex: 0 0 auto;
 }
-.mw-card-snippet { color: var(--mw-ink); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Closed-card preview (S5): two lines instead of a one-line ellipsis - one line truncates most real
+   comments to uselessness. min-width:0 lets the flex child actually shrink so the clamp engages. */
+.mw-card-snippet {
+  color: var(--mw-ink);
+  font-size: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Quiet thread-count on a card with a conversation (S5): the speaker-dot vocabulary, muted. */
+.mw-card-count { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--mw-muted); }
+.mw-card-count::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--mw-muted); flex: 0 0 auto; }
 
 /* Thread + actions only show on the active card (one active at a time, spec section 5) */
 .mw-thread, .mw-card-actions { display: none; }
@@ -559,9 +629,11 @@ html, body {
   box-shadow: var(--mw-shadow-card);
   animation: mw-draft-in 160ms ease-out;
 }
+/* Opacity-only entrance: the draft now carries an anchor-positioning translateY (desktop), so a
+   transform-based entrance would fight it. A quiet fade reads the same and never moves the card. */
 @keyframes mw-draft-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .mw-draft { animation: none; }
