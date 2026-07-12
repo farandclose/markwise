@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, accessSync, constants } from 'node:fs';
+import { readFileSync, writeFileSync, accessSync, constants } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { lintText } from './lint.js';
 import { fixText } from './fix.js';
@@ -11,6 +11,7 @@ import { readDocument, writeDocument, applyEol } from './eol.js';
 import { createPreviewServer } from './preview/server.js';
 import { writeRendezvous, removeRendezvous } from './preview/rendezvous.js';
 import { waitForHandoff } from './preview/wait.js';
+import { runFeedbackCommand, FEEDBACK_ENDPOINT, type FeedbackMeta } from './feedback.js';
 import type { Finding } from './types.js';
 
 const USAGE = `markwise - a human-agent review layer for markdown
@@ -22,6 +23,7 @@ Usage:
   markwise export <file> [--output <path>]   (alias: strip)
   markwise agent-setup                       (alias: setup) print coding-agent setup instructions
   markwise preview <file>                    open the document in a local web previewer
+  markwise feedback                          send feedback to the maintainer (posts a public GitHub issue)
 
 Options:
   --fix             Repair mechanical anchor fields (hash, before/after) in place. Never edits prose.
@@ -309,6 +311,30 @@ function agentSetupCommand(args: Args): number {
   return 0;
 }
 
+function collectFeedbackMeta(): FeedbackMeta {
+  const pkg = JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+  ) as { version: string };
+  return { version: pkg.version, platform: process.platform, node: process.version };
+}
+
+// async so sync throws (e.g. unreadable package.json) become rejections the dispatch .catch() handles
+async function feedbackCommand(): Promise<number> {
+  return runFeedbackCommand({
+    input: process.stdin,
+    output: process.stdout,
+    fetchImpl: fetch,
+    endpoint: process.env['MARKWISE_FEEDBACK_URL'] ?? FEEDBACK_ENDPOINT,
+    meta: collectFeedbackMeta(),
+    openBrowser,
+    writeDraft: (content) => {
+      const path = 'markwise-feedback-draft.md';
+      writeFileSync(path, content, 'utf8');
+      return path;
+    },
+  });
+}
+
 function exportCommand(args: Args): number {
   if (args.files.length !== 1) {
     process.stderr.write('markwise export: expects exactly one input file\n');
@@ -435,6 +461,19 @@ function main(): void {
   }
   if (args.command === 'export' || args.command === 'strip') {
     process.exit(exportCommand(args));
+  }
+  if (args.command === 'feedback') {
+    if (args.files.length > 0) {
+      process.stderr.write('markwise feedback: takes no file arguments\n');
+      process.exit(2);
+    }
+    feedbackCommand()
+      .then((code) => process.exit(code))
+      .catch((err) => {
+        process.stderr.write(`markwise feedback: ${(err as Error).message}\n`);
+        process.exit(1);
+      });
+    return;
   }
   process.stderr.write(`markwise: unknown command "${args.command}"\n\n${USAGE}`);
   process.exit(2);

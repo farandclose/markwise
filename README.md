@@ -138,6 +138,20 @@ Honest limitations:
 - The protocol is **v1 and may still evolve**; `markwise lint` is the compatibility guarantee.
 - Suggested edits cover prose spans; they do not yet restructure tables or move whole sections.
 
+## Feedback
+
+Markwise is shaped by the people using it. To tell us what worked and what did not:
+
+```bash
+markwise feedback
+```
+
+Three short questions, then your answers are posted as a public issue on
+[farandclose/markwise](https://github.com/farandclose/markwise/issues) - no GitHub account or
+login needed. Leave a handle or email if you are open to follow-up questions; the command
+prints the issue link so you can subscribe to it too. Prefer to write directly?
+[Open an issue](https://github.com/farandclose/markwise/issues/new) any time.
+
 ## License
 
 [MIT](LICENSE)

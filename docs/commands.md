@@ -106,6 +106,26 @@ a `## Markwise` section to its persistent instruction file (such as `~/.claude/C
 `~/.codex/AGENTS.md`) that teaches when to reach for Markwise and how to run the
 preview -> act-on-feedback loop. The CLI never edits those files itself.
 
+## `markwise feedback`
+
+Send feedback about Markwise itself to the maintainers.
+
+```bash
+markwise feedback
+```
+
+Asks three short questions in the terminal - what you were trying to do, what happened (what
+worked, what broke), and what you would change or add first - plus an optional contact handle.
+Your answers are then posted as a public GitHub issue on `farandclose/markwise` via the
+`markwise.dev` relay, so no GitHub account or `gh` CLI is required.
+
+- Nothing is sent without an explicit confirmation step, and the text is clearly marked as
+  becoming public. On success the command prints the issue link, so you can subscribe to it or
+  comment from your own account.
+- If the relay is unreachable, your answers are saved to `markwise-feedback-draft.md` and a
+  prefilled GitHub new-issue page opens so nothing is lost.
+- `MARKWISE_FEEDBACK_URL` overrides the relay endpoint (for testing).
+
 ## Protocol documents
 
 - [`DECISIONS.md`](../DECISIONS.md) - the decision log for the protocol.

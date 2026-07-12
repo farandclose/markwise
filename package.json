@@ -1,6 +1,6 @@
 {
   "name": "markwise",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A human-agent review layer for markdown: anchored, structured notes stored in-file.",
   "repository": {
     "type": "git",
@@ -10,7 +10,15 @@
   "bugs": {
     "url": "https://github.com/farandclose/markwise/issues"
   },
-  "keywords": ["markdown", "review", "annotations", "comments", "cli", "agents", "previewer"],
+  "keywords": [
+    "markdown",
+    "review",
+    "annotations",
+    "comments",
+    "cli",
+    "agents",
+    "previewer"
+  ],
   "author": "farandclose",
   "packageManager": "pnpm@10.29.3",
   "type": "module",
@@ -32,7 +40,7 @@
     "SETUP_PROMPT.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-preview-assets.mjs",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.api.json && node scripts/copy-preview-assets.mjs",
     "prepare": "npm run build",
     "lint:self": "node ./dist/cli.js lint sample.md",
     "test": "vitest run",
@@ -48,6 +56,7 @@
     "@playwright/test": "^1.60.0",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.0.0",
+    "@vercel/node": "^5.8.23",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   },
