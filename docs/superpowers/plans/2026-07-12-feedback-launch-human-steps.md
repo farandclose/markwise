@@ -13,8 +13,11 @@ done before end-to-end verification of the relay.
 - Sign up at github.com with a fresh email (an alias like
   saurabhmehta123+markwisebot@gmail.com works). Suggested name: `markwise-bot`;
   any available name is fine - note whatever you pick.
-- GitHub ToS allows one machine account per human. No repo access or
-  collaborator invite is needed - any account can file issues on public repos.
+- GitHub ToS allows one machine account per human.
+- Invite the bot as a collaborator on farandclose/markwise with the **Triage**
+  role (Settings -> Collaborators). Any account can file issues on public
+  repos, but GitHub silently drops the `cli-feedback` label at creation time
+  unless the creator has at least triage access. Triage grants no code access.
 - Store the credentials in your password manager.
 
 ## 2. Issue the token
