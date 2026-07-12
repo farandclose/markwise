@@ -291,6 +291,9 @@
   /* progressive enhancement: dim inactive steps only when scrollytelling is live */
   .how--live .how-step{opacity:.3}
   .how--live .how-step.active{opacity:1}
+  /* spacer so the sticky stage stays pinned while the last step crosses center;
+     scoped to how--live so mobile/static/reduced-motion get no dead scroll */
+  .how--live .how-steps::after{content:"";display:block;height:32vh}
 
   /* the pinned stage: one box, vertically centered so it sits beside the active step */
   .how-stage{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:center}
@@ -926,8 +929,10 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
           }
         });
       }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
-      // observe each step's text (not the tall block) so the window flips when the copy hits center
-      steps.forEach(function(s){ var c = s.querySelector('div'); if(c) io.observe(c); });
+      // observe the whole 44vh step so exactly one step intersects the center
+      // band at all times - observing only the text div left dead zones where
+      // the stage sat on a stale state between steps
+      steps.forEach(function(s){ io.observe(s); });
     } else {
       win.setAttribute('data-step', '4'); // static fallback: the resolved, complete state
     }
