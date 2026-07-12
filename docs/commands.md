@@ -117,7 +117,7 @@ markwise feedback
 Asks three short questions in the terminal - what you were trying to do, what happened (what
 worked, what broke), and what you would change or add first - plus an optional contact handle.
 Your answers are then posted as a public GitHub issue on `farandclose/markwise` via the
-`markwise.dev` relay, so no GitHub account or CLI is required.
+`markwise.dev` relay, so no GitHub account or `gh` CLI is required.
 
 - Nothing is sent without an explicit confirmation step, and the text is clearly marked as
   becoming public. On success the command prints the issue link, so you can subscribe to it or
