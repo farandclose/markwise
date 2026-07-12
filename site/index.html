@@ -455,6 +455,12 @@
     width:1.6rem;height:1.6rem;display:flex;align-items:center;justify-content:center;
     flex-shrink:0;transform:translateY(.1em)}
   .agentdoes code{font-family:var(--mono);font-size:.86em;color:var(--ink)}
+  .start-alt{font-size:.92rem;color:var(--dim);margin:1rem 0 0}
+  .start-alt code,.start-fine code{font-family:var(--mono);font-size:.88em;color:var(--ink);
+    background:var(--stage-3);padding:.05em .35em;border-radius:5px}
+  .start-fine{font-size:.85rem;color:var(--dim);margin:.4rem 0 0;max-width:34em}
+  .modal-hint code{font-family:var(--mono);font-size:.88em;color:var(--ink);
+    background:var(--stage-3);padding:.05em .35em;border-radius:5px}
 
   footer{border-top:1px solid var(--hairline-soft);padding:2.2rem 0 3rem;margin-top:2rem}
   .foot-in{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
@@ -546,7 +552,7 @@
     <a class="mark" href="#top"><img class="mark-ico" src="brand/markwise-mark.svg" alt="" aria-hidden="true"><span class="mark-word">markw<i>i</i>se</span></a>
     <div class="bar-actions">
       <a class="btn btn-ghost" href="https://github.com/farandclose/markwise"><svg class="gh-ico" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
-      <button class="btn btn-primary jsonly" type="button" data-open-install>Install</button>
+      <button class="btn btn-primary jsonly" type="button" data-open-install>Get started</button>
     </div>
   </div>
 </header>
@@ -765,6 +771,8 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
             </div>
             <p class="copy-note" aria-live="polite" data-copy-note></p>
           </div>
+          <p class="start-alt">Prefer to run it yourself? <code>npm i -g markwise</code>, then <code>markwise preview your-doc.md</code>.</p>
+          <p class="start-fine">Free and open source, MIT. Needs Node 20+. <code>agent-setup</code> only prints instructions for your agent to read - nothing runs in the background.</p>
           <div class="hero-links">
             <a class="btn btn-ghost" href="https://github.com/farandclose/markwise">View on GitHub</a>
           </div>
@@ -772,9 +780,9 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
         <div>
           <p class="lede" style="margin-bottom:.6rem">What your agent will do with it:</p>
           <ol class="agentdoes">
-            <li>Install the CLI from GitHub (open source, MIT).</li>
-            <li>Run <code>markwise agent-setup</code> and read the printed instructions.</li>
-            <li>Teach itself the loop: write a doc, open <code>markwise preview</code> for you, then act on every note you leave.</li>
+            <li><span>Install the CLI from npm (open source, MIT).</span></li>
+            <li><span>Run <code>markwise agent-setup</code> and read the printed instructions.</span></li>
+            <li><span>Teach itself the loop: write a doc, open <code>markwise preview</code> for you, then act on every note you leave.</span></li>
           </ol>
         </div>
       </div>
@@ -805,6 +813,7 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
       </button>
     </div>
     <p class="modal-hint">Paste into Claude Code, Codex, or any coding agent.</p>
+    <p class="modal-hint">Free and open source, MIT. <code>agent-setup</code> only prints instructions - nothing runs in the background.</p>
     <p class="copy-note" aria-live="polite" data-modal-note></p>
   </div>
 </div>
