@@ -295,3 +295,40 @@ test('contact answer is included in the submission payload', async () => {
   await runFeedbackCommand(s.deps);
   expect(payload!.contact).toBe('@saurabh');
 });
+
+// A draft that cannot be written (unwritable cwd) must still not lose the text:
+// the composed issue is printed to stdout for manual copy-paste.
+function scriptThatCannotWriteDraft(lines: string[], fetchImpl: typeof fetch): Script {
+  const s = script(lines, fetchImpl);
+  s.deps.writeDraft = () => {
+    throw new Error('EACCES: cannot write draft');
+  };
+  return s;
+}
+
+test('unavailable + draft write fails: prints composed issue and still opens browser, exit 1', async () => {
+  const down = (async () => {
+    throw new Error('ECONNREFUSED');
+  }) as unknown as typeof fetch;
+  const s = scriptThatCannotWriteDraft(
+    ['review a plan my agent wrote', 'comments worked great', 'faster startup', '', 'y'],
+    down
+  );
+  const code = await runFeedbackCommand(s.deps);
+  expect(code).toBe(1);
+  expect(s.written()).toContain('### What were you trying to do?');
+  expect(s.written()).toContain('issues/new');
+  expect(s.opened).toHaveLength(1);
+});
+
+test('invalid (400) + draft write fails: prints composed issue, no browser, exit 1', async () => {
+  const s = scriptThatCannotWriteDraft(
+    ['review a plan my agent wrote', 'comments worked great', 'faster startup', '', ''],
+    fakeFetch(400, { error: 'feedback too short' })
+  );
+  const code = await runFeedbackCommand(s.deps);
+  expect(code).toBe(1);
+  expect(s.written()).toContain('### What were you trying to do?');
+  expect(s.written()).toContain('issues/new');
+  expect(s.opened).toEqual([]);
+});

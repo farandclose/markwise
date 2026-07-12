@@ -318,6 +318,7 @@ function collectFeedbackMeta(): FeedbackMeta {
   return { version: pkg.version, platform: process.platform, node: process.version };
 }
 
+// async so sync throws (e.g. unreadable package.json) become rejections the dispatch .catch() handles
 async function feedbackCommand(): Promise<number> {
   return runFeedbackCommand({
     input: process.stdin,

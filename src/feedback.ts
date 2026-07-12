@@ -188,20 +188,43 @@ export async function runFeedbackCommand(deps: FeedbackCommandDeps): Promise<num
     }
 
     const body = composeIssueMarkdown(submission);
-    const draftPath = deps.writeDraft(body);
+    // Never lose the user's words. If even the draft file cannot be written
+    // (e.g. an unwritable cwd), fall back to printing the composed issue so it
+    // can be copied by hand.
+    let draftPath: string | null = null;
+    try {
+      draftPath = deps.writeDraft(body);
+    } catch {
+      draftPath = null;
+    }
+    const paste = `\nCould not save a draft file, so here is your feedback - copy it into a new issue at ${NEW_ISSUE_URL}:\n\n${body}\n\n`;
+
     if (result.kind === 'invalid') {
-      out.write(
-        `\nmarkwise feedback: ${result.message}\n` +
-          `Your answers were saved to ${draftPath} - nothing was lost.\n`
-      );
+      if (draftPath !== null) {
+        out.write(
+          `\nmarkwise feedback: ${result.message}\n` +
+            `Your answers were saved to ${draftPath} - nothing was lost.\n`
+        );
+      } else {
+        out.write(`\nmarkwise feedback: ${result.message}\n` + paste);
+      }
       return 1;
     }
+
     const url = buildIssueUrl(deriveTitle(answers), body);
-    out.write(
-      `\nmarkwise feedback: ${result.message}.\n` +
-        `Your answers were saved to ${draftPath} - nothing was lost.\n` +
-        `Opening GitHub with your feedback prefilled so you can submit it yourself:\n  ${url}\n`
-    );
+    if (draftPath !== null) {
+      out.write(
+        `\nmarkwise feedback: ${result.message}.\n` +
+          `Your answers were saved to ${draftPath} - nothing was lost.\n` +
+          `Opening GitHub with your feedback prefilled so you can submit it yourself:\n  ${url}\n`
+      );
+    } else {
+      out.write(
+        `\nmarkwise feedback: ${result.message}.\n` +
+          paste +
+          `Also opening GitHub with your feedback prefilled so you can submit it yourself:\n  ${url}\n`
+      );
+    }
     deps.openBrowser(url);
     return 1;
   } finally {
