@@ -716,7 +716,11 @@ function collectFeedbackMeta(): FeedbackMeta {
   return { version: pkg.version, platform: process.platform, node: process.version };
 }
 
-function feedbackCommand(): Promise<number> {
+// async so a synchronous throw (e.g. unreadable package.json in
+// collectFeedbackMeta) becomes a rejection the dispatch .catch() handles,
+// matching why promptWaitCommand is async. (Amended during execution: the
+// original plan had a plain function here - reviewer-caught defect.)
+async function feedbackCommand(): Promise<number> {
   return runFeedbackCommand({
     input: process.stdin,
     output: process.stdout,
