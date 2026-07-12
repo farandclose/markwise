@@ -7,6 +7,17 @@
 <meta name="description" content="The review layer for agent-written markdown. Comments, suggested edits, and replies - anchored to the exact text, saved inside the file, actionable by any agent.">
 <meta property="og:title" content="Markwise - the review layer for agent-written markdown">
 <meta property="og:description" content="Your agent writes the doc. You comment and suggest edits on the exact text. Your agent reads every note, acts, and answers.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://markwise.dev/">
+<meta property="og:image" content="https://markwise.dev/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Markwise: the review layer for agent-written markdown. A sentence with a marker highlight, a strikethrough edit, and its green replacement.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Markwise - the review layer for agent-written markdown">
+<meta name="twitter:description" content="Your agent writes the doc. You comment and suggest edits on the exact text. Your agent reads every note, acts, and answers.">
+<meta name="twitter:image" content="https://markwise.dev/assets/og.png">
+<link rel="canonical" href="https://markwise.dev/">
 <link rel="icon" type="image/svg+xml" href="brand/markwise-mark.svg">
 <style>
   @font-face{font-family:'Literata';font-style:normal;font-weight:400 700;font-display:swap;
@@ -447,6 +458,31 @@
   .fnote{text-align:center;font-size:1rem;color:var(--dim);max-width:44em;margin:.9rem auto 0}
   .fnote b{color:var(--ink);font-weight:600}
 
+  /* problem: the handoff gap */
+  .problem{border-top:1px solid var(--hairline-soft)}
+  .moves{list-style:none;margin:0;padding:0}
+  .moves li{display:grid;grid-template-columns:minmax(10rem,13rem) 1fr;gap:1.6rem;
+    padding:.9rem 0;border-top:1px solid var(--hairline-soft)}
+  .moves b{color:var(--ink);font-weight:600;font-size:1rem}
+  .moves span{color:var(--dim);font-size:.98rem;line-height:1.6;max-width:38em}
+
+  /* fair questions: objections answered in rows, not cards */
+  .asks{border-top:1px solid var(--hairline-soft)}
+  .ask-list{margin:0}
+  .ask{display:grid;grid-template-columns:minmax(14rem,19rem) 1fr;gap:2rem;
+    padding:1.05rem 0;border-top:1px solid var(--hairline-soft)}
+  .ask dt{font-family:var(--display);font-weight:700;color:var(--ink);font-size:1.02rem}
+  .ask dd{margin:0;color:var(--dim);font-size:.98rem;line-height:1.6;max-width:38em}
+  .ask code,.moves code,.proof-shot code{font-family:var(--mono);font-size:.86em;color:var(--ink);
+    background:var(--stage-3);padding:.05em .35em;border-radius:5px}
+
+  /* the real previewer + proof row */
+  .proof-shot{margin:clamp(2.4rem,6vh,3.8rem) auto 0;max-width:960px}
+  .proof-shot img{display:block;width:100%;height:auto;border:1px solid var(--hairline);
+    border-radius:13px;box-shadow:0 14px 44px rgba(23,23,18,.10)}
+  .proof-shot figcaption{font-size:.9rem;color:var(--dim);text-align:center;margin:.75rem 0 0}
+  .proof-row{font-size:.88rem;color:var(--dim);text-align:center;margin:1.5rem 0 0}
+
   /* get started */
   .start{border-top:1px solid var(--hairline-soft)}
   .start-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(2rem,5vw,4rem);align-items:start}
@@ -533,6 +569,7 @@
     .scenebox{order:-1;min-height:420px;transform:scale(.85);margin:-1rem 0 -1.5rem}
     .hero-replay{display:none}
     .real-grid,.start-grid{grid-template-columns:1fr}
+    .moves li,.ask{grid-template-columns:1fr;gap:.3rem}
     .how-grid{grid-template-columns:1fr;gap:1.4rem}
     .how-stage{position:static;height:auto;display:block;margin-top:1.2rem}
     .how-step{min-height:0;padding:.7rem 0}
@@ -611,6 +648,17 @@
       </div>
     </div>
   </div>
+
+  <section class="problem">
+    <div class="shell">
+      <h2>Your feedback has no way back</h2>
+      <p class="lede">Agents hand you long, clean markdown - PRDs, specs, launch plans. Then your notes have to reach the agent, and that handoff is where it falls apart.</p>
+      <ul class="moves">
+        <li><b>Reply in chat</b><span>and you describe locations in prose: "in section 3, the timeline..." The longer the doc, the worse it gets, and the feedback dies with the session.</span></li>
+        <li><b>Edit the file yourself</b><span>and the agent gets no signal: what changed, what is still open, what needs an answer. A raw diff is not a review.</span></li>
+      </ul>
+    </div>
+  </section>
 
   <section class="how" id="how">
     <div class="shell">
@@ -761,6 +809,18 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
     </div>
   </section>
 
+  <section class="asks">
+    <div class="shell">
+      <h2>Fair questions</h2>
+      <dl class="ask-list">
+        <div class="ask"><dt>Why not Google Docs or Notion?</dt><dd>Your doc leaves the repo and the agent loses it - truth moves out of the file. Markwise keeps the review inside the markdown, where the document lives.</dd></div>
+        <div class="ask"><dt>Do the markers junk up my file?</dt><dd>Review state hides in HTML comments. GitHub, VS Code, and every normal renderer show the document clean. <code>markwise export</code> writes a copy with every trace stripped; 24 lint rules guard the format.</dd></div>
+        <div class="ask"><dt>What does my agent need?</dt><dd>Nothing special. <code>markwise prompt</code> bundles the doc and every open note into a plain-text block any model can read. No plugin, no API, no lock-in.</dd></div>
+        <div class="ask"><dt>What are the limits today?</dt><dd>One file per preview, one reviewer, on localhost. A review surface, not a collaboration server. The protocol is v1; <code>markwise lint</code> is the compatibility guarantee.</dd></div>
+      </dl>
+    </div>
+  </section>
+
   <section class="start">
     <div class="shell">
       <h2>Hand it to your agent</h2>
@@ -789,6 +849,12 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
           </ol>
         </div>
       </div>
+      <figure class="proof-shot">
+        <img src="assets/previewer-light.png" width="1200" height="788" loading="lazy"
+          alt="The Markwise previewer: a launch plan open in the browser with an anchored comment thread and a suggested edit shown inline">
+        <figcaption>The real previewer: <code>markwise preview launch-plan.md</code>, on localhost.</figcaption>
+      </figure>
+      <p class="proof-row">v0.3.0 on npm &middot; MIT license &middot; 160+ unit tests and a browser e2e suite &middot; nothing leaves your machine</p>
     </div>
   </section>
 
