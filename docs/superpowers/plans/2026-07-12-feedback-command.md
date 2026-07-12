@@ -654,6 +654,14 @@ export async function runFeedbackCommand(deps: FeedbackCommandDeps): Promise<num
 Run: `pnpm vitest run test/feedback.test.ts`
 Expected: PASS (24 tests).
 
+> **Deviation note (2026-07-12, during execution):** the `script()` harness above
+> as originally written (pre-ending the input stream with all lines) is broken:
+> `node:readline/promises` drops buffered lines that arrive while no `question()`
+> is pending, so the second question rejects with "readline was closed". The
+> committed harness feeds one line per prompt (keyed on the `> ` / `] ` prompt
+> suffixes) instead. Production code and all test assertions are unchanged from
+> this plan. See `.superpowers/sdd/task-3-report.md` for the diagnosis.
+
 - [ ] **Step 5: Run the whole suite to check for regressions**
 
 Run: `pnpm test`
@@ -747,16 +755,20 @@ if (args.command === 'feedback') {
 
 - [ ] **Step 5: Build and smoke-test by hand**
 
+Piped stdin delivers all lines in one chunk, and readline drops buffered lines
+that arrive while no question is pending (see the Task 3 deviation note) - so
+the smoke input must be paced, one line at a time:
+
 ```bash
 pnpm build
 node dist/cli.js --help | grep feedback   # the new usage line is present
-printf 'trying things out with markwise\nit mostly worked fine\nnothing yet\n\nn\n' | MARKWISE_FEEDBACK_URL=http://127.0.0.1:9 node dist/cli.js feedback
+for l in 'trying things out with markwise' 'it mostly worked fine' 'nothing yet' '' 'n'; do printf '%s\n' "$l"; sleep 0.4; done | MARKWISE_FEEDBACK_URL=http://127.0.0.1:9 node dist/cli.js feedback
 ```
 
 Expected for the second command: the three questions and contact prompt echo, then `Nothing sent.` and exit code 0 (the `n` declines before any network call - the dead endpoint proves no early request happens). Also run:
 
 ```bash
-printf 'trying things out with markwise\nit mostly worked\nnothing\n\ny\n' | MARKWISE_FEEDBACK_URL=http://127.0.0.1:9 node dist/cli.js feedback; echo "exit=$?"
+for l in 'trying things out with markwise' 'it mostly worked' 'nothing' '' 'y'; do printf '%s\n' "$l"; sleep 0.4; done | MARKWISE_FEEDBACK_URL=http://127.0.0.1:9 node dist/cli.js feedback; echo "exit=$?"
 ls markwise-feedback-draft.md && rm markwise-feedback-draft.md
 ```
 
