@@ -40,7 +40,7 @@
     "SETUP_PROMPT.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-preview-assets.mjs",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.api.json && node scripts/copy-preview-assets.mjs",
     "prepare": "npm run build",
     "lint:self": "node ./dist/cli.js lint sample.md",
     "test": "vitest run",
