@@ -1,6 +1,8 @@
 // Everything testable about `markwise feedback` lives here; src/cli.ts only
 // wires in the real stdin/stdout, fetch, and browser.
 
+import { createInterface } from 'node:readline/promises';
+
 export interface FeedbackAnswers {
   tryingTo: string;
   whatHappened: string;
@@ -123,4 +125,86 @@ export async function submitFeedback(
     return { kind: 'invalid', message };
   }
   return { kind: 'unavailable', message: `feedback service error (${res.status})` };
+}
+
+export interface FeedbackCommandDeps {
+  input: NodeJS.ReadableStream;
+  output: NodeJS.WritableStream;
+  fetchImpl: typeof fetch;
+  endpoint: string;
+  meta: FeedbackMeta;
+  openBrowser: (url: string) => void;
+  writeDraft: (content: string) => string;
+}
+
+export async function runFeedbackCommand(deps: FeedbackCommandDeps): Promise<number> {
+  const out = deps.output;
+  const rl = createInterface({ input: deps.input, output: deps.output });
+  try {
+    out.write(
+      'markwise feedback - three quick questions. Your answers are posted publicly as a GitHub issue.\n\n'
+    );
+    const tryingTo = (await rl.question('What were you trying to do?\n> ')).trim();
+    const whatHappened = (await rl.question('\nWhat happened - what worked, what broke?\n> ')).trim();
+    const wouldChange = (await rl.question('\nWhat would you change or add first?\n> ')).trim();
+    const answers: FeedbackAnswers = { tryingTo, whatHappened, wouldChange };
+
+    const problem = validateAnswers(answers);
+    if (problem !== null) {
+      out.write(`\nmarkwise feedback: ${problem}. Nothing sent.\n`);
+      return 1;
+    }
+
+    const contactRaw = (
+      await rl.question(
+        '\nGitHub handle or email, if you are open to follow-up questions (Enter to skip)\n> '
+      )
+    ).trim();
+    const submission: FeedbackSubmission = {
+      answers,
+      contact: contactRaw === '' ? null : contactRaw,
+      meta: deps.meta,
+    };
+
+    out.write(
+      `\nAlso sending: markwise ${deps.meta.version}, ${deps.meta.platform}, node ${deps.meta.node}.\n`
+    );
+    const confirm = (
+      await rl.question(
+        'This will be posted publicly as a GitHub issue on farandclose/markwise. Send? [Y/n] '
+      )
+    )
+      .trim()
+      .toLowerCase();
+    if (confirm !== '' && confirm !== 'y' && confirm !== 'yes') {
+      out.write('Nothing sent.\n');
+      return 0;
+    }
+
+    const result = await submitFeedback(submission, deps.endpoint, deps.fetchImpl);
+    if (result.kind === 'ok') {
+      out.write(`\nThanks - your feedback is now issue #${result.issueNumber}: ${result.issueUrl}\n`);
+      return 0;
+    }
+
+    const body = composeIssueMarkdown(submission);
+    const draftPath = deps.writeDraft(body);
+    if (result.kind === 'invalid') {
+      out.write(
+        `\nmarkwise feedback: ${result.message}\n` +
+          `Your answers were saved to ${draftPath} - nothing was lost.\n`
+      );
+      return 1;
+    }
+    const url = buildIssueUrl(deriveTitle(answers), body);
+    out.write(
+      `\nmarkwise feedback: ${result.message}.\n` +
+        `Your answers were saved to ${draftPath} - nothing was lost.\n` +
+        `Opening GitHub with your feedback prefilled so you can submit it yourself:\n  ${url}\n`
+    );
+    deps.openBrowser(url);
+    return 1;
+  } finally {
+    rl.close();
+  }
 }

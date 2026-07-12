@@ -158,3 +158,140 @@ test('201 with an unreadable body maps to unavailable', async () => {
   const r = await submitFeedback(submission(), 'e', weird);
   expect(r.kind).toBe('unavailable');
 });
+
+import { PassThrough } from 'node:stream';
+import { runFeedbackCommand, type FeedbackCommandDeps } from '../src/feedback.js';
+
+interface Script {
+  deps: FeedbackCommandDeps;
+  written: () => string;
+  drafts: string[];
+  opened: string[];
+}
+
+function script(lines: string[], fetchImpl: typeof fetch): Script {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  let out = '';
+  const queue = [...lines];
+  output.on('data', (c: Buffer) => {
+    const s = String(c);
+    out += s;
+    // Feed one line per prompt: readline drops buffered lines that arrive
+    // while no question() is pending, so pre-ending the stream loses answers.
+    if ((s.endsWith('> ') || s.endsWith('] ')) && queue.length > 0) {
+      const next = queue.shift()!;
+      setImmediate(() => input.write(next + '\n'));
+    }
+  });
+  const drafts: string[] = [];
+  const opened: string[] = [];
+  return {
+    deps: {
+      input,
+      output,
+      fetchImpl,
+      endpoint: 'https://example.test/api/feedback',
+      meta: { version: '0.4.0', platform: 'darwin', node: 'v24.0.0' },
+      openBrowser: (u) => opened.push(u),
+      writeDraft: (content) => {
+        drafts.push(content);
+        return 'markwise-feedback-draft.md';
+      },
+    },
+    written: () => out,
+    drafts,
+    opened,
+  };
+}
+
+const okFetch = fakeFetch(201, {
+  issueNumber: 7,
+  issueUrl: 'https://github.com/farandclose/markwise/issues/7',
+});
+
+test('happy path: answers, skipped contact, Enter to confirm, issue link printed', async () => {
+  const s = script(
+    ['review a plan my agent wrote', 'comments worked great', 'faster startup', '', ''],
+    okFetch
+  );
+  const code = await runFeedbackCommand(s.deps);
+  expect(code).toBe(0);
+  expect(s.written()).toContain('posted publicly');
+  expect(s.written()).toContain('issue #7');
+  expect(s.written()).toContain('https://github.com/farandclose/markwise/issues/7');
+  expect(s.drafts).toEqual([]);
+  expect(s.opened).toEqual([]);
+});
+
+test('too-short answers exit 1 without asking for contact or calling fetch', async () => {
+  let fetchCalled = false;
+  const spy = (async () => {
+    fetchCalled = true;
+    return new Response('{}', { status: 201 });
+  }) as unknown as typeof fetch;
+  const s = script(['hi', '', ''], spy);
+  const code = await runFeedbackCommand(s.deps);
+  expect(code).toBe(1);
+  expect(fetchCalled).toBe(false);
+  expect(s.written()).toContain('too short');
+});
+
+test('answering n at the confirm gate sends nothing and exits 0', async () => {
+  let fetchCalled = false;
+  const spy = (async () => {
+    fetchCalled = true;
+    return new Response('{}', { status: 201 });
+  }) as unknown as typeof fetch;
+  const s = script(
+    ['review a plan my agent wrote', 'comments worked great', 'faster startup', '@me', 'n'],
+    spy
+  );
+  const code = await runFeedbackCommand(s.deps);
+  expect(code).toBe(0);
+  expect(fetchCalled).toBe(false);
+  expect(s.written()).toContain('Nothing sent');
+});
+
+test('service unavailable: draft saved, browser opened with prefilled issue, exit 1', async () => {
+  const down = (async () => {
+    throw new Error('ECONNREFUSED');
+  }) as unknown as typeof fetch;
+  const s = script(
+    ['review a plan my agent wrote', 'comments worked great', 'faster startup', '', 'y'],
+    down
+  );
+  const code = await runFeedbackCommand(s.deps);
+  expect(code).toBe(1);
+  expect(s.drafts).toHaveLength(1);
+  expect(s.drafts[0]).toContain('### What were you trying to do?');
+  expect(s.opened).toHaveLength(1);
+  expect(s.opened[0]).toContain('github.com/farandclose/markwise/issues/new');
+  expect(s.written()).toContain('markwise-feedback-draft.md');
+});
+
+test('invalid (400) from the relay: draft saved, no browser, exit 1', async () => {
+  const s = script(
+    ['review a plan my agent wrote', 'comments worked great', 'faster startup', '', ''],
+    fakeFetch(400, { error: 'feedback too short' })
+  );
+  const code = await runFeedbackCommand(s.deps);
+  expect(code).toBe(1);
+  expect(s.drafts).toHaveLength(1);
+  expect(s.opened).toEqual([]);
+  expect(s.written()).toContain('feedback too short');
+});
+
+test('contact answer is included in the submission payload', async () => {
+  let payload: { contact: string | null } | null = null;
+  const spy = (async (_u: unknown, init: unknown) => {
+    payload = JSON.parse(String((init as RequestInit).body)) as { contact: string | null };
+    return new Response(JSON.stringify({ issueNumber: 1, issueUrl: 'u' }), { status: 201 });
+  }) as unknown as typeof fetch;
+  const s = script(
+    ['review a plan my agent wrote', 'comments worked great', 'faster startup', '@saurabh', ''],
+    spy
+  );
+  await runFeedbackCommand(s.deps);
+  expect(payload!.contact).toBe('@saurabh');
+});
