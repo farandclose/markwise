@@ -318,7 +318,7 @@ function collectFeedbackMeta(): FeedbackMeta {
   return { version: pkg.version, platform: process.platform, node: process.version };
 }
 
-function feedbackCommand(): Promise<number> {
+async function feedbackCommand(): Promise<number> {
   return runFeedbackCommand({
     input: process.stdin,
     output: process.stdout,
