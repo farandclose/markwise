@@ -1,5 +1,10 @@
 # Handoff: human steps for the markwise feedback launch
 
+STATUS 2026-07-12: steps 1-4 DONE (bot account + 90-day PAT created, token in
+Vercel production+preview as sensitive, `cli-feedback` label created). PR #9
+merged, v0.4.0 tagged and live on npm. Remaining: production redeploy pickup
+of the env var + live e2e (in progress), PAT rotation reminder (~2026-10-05).
+
 For Saurabh, to run in a separate assisted session. These are the steps that
 need a human (account creation, secrets, admin rights) for the `markwise
 feedback` launch. Full context lives in the spec:
@@ -14,10 +19,13 @@ done before end-to-end verification of the relay.
   saurabhmehta123+markwisebot@gmail.com works). Suggested name: `markwise-bot`;
   any available name is fine - note whatever you pick.
 - GitHub ToS allows one machine account per human.
-- Invite the bot as a collaborator on farandclose/markwise with the **Triage**
-  role (Settings -> Collaborators). Any account can file issues on public
-  repos, but GitHub silently drops the `cli-feedback` label at creation time
-  unless the creator has at least triage access. Triage grants no code access.
+- Do NOT invite the bot as a collaborator (decision 2026-07-12).
+  farandclose is a personal account, and personal repos have no Triage role -
+  a collaborator invite would grant full Write (push) access, far more than a
+  feedback bot should hold. Consequence: GitHub silently drops the
+  `cli-feedback` label on the bot's issues; find them with
+  `author:markwise-bot` in the issues search instead. Optional future fix: a
+  small GitHub Action that auto-labels issues authored by the bot.
 - Store the credentials in your password manager.
 
 ## 2. Issue the token
