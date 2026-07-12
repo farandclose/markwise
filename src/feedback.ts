@@ -77,3 +77,50 @@ export function buildIssueUrl(title: string, body: string): string {
   }
   return url;
 }
+
+export type SubmitResult =
+  | { kind: 'ok'; issueNumber: number; issueUrl: string }
+  | { kind: 'invalid'; message: string }
+  | { kind: 'unavailable'; message: string };
+
+export async function submitFeedback(
+  s: FeedbackSubmission,
+  endpoint: string,
+  fetchImpl: typeof fetch
+): Promise<SubmitResult> {
+  let res: Response;
+  try {
+    res = await fetchImpl(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        [CLIENT_HEADER_NAME]: CLIENT_HEADER_VALUE,
+      },
+      body: JSON.stringify(s),
+    });
+  } catch {
+    return { kind: 'unavailable', message: 'could not reach the feedback service' };
+  }
+  if (res.status === 201) {
+    try {
+      const data = (await res.json()) as { issueNumber?: unknown; issueUrl?: unknown };
+      if (typeof data.issueNumber === 'number' && typeof data.issueUrl === 'string') {
+        return { kind: 'ok', issueNumber: data.issueNumber, issueUrl: data.issueUrl };
+      }
+    } catch {
+      // fall through to unavailable
+    }
+    return { kind: 'unavailable', message: 'the feedback service returned an unreadable reply' };
+  }
+  if (res.status === 400 || res.status === 403) {
+    let message = `the feedback service rejected this (${res.status})`;
+    try {
+      const data = (await res.json()) as { error?: unknown };
+      if (typeof data.error === 'string') message = data.error;
+    } catch {
+      // keep the generic message
+    }
+    return { kind: 'invalid', message };
+  }
+  return { kind: 'unavailable', message: `feedback service error (${res.status})` };
+}

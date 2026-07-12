@@ -100,3 +100,61 @@ test('prefilled URL is capped at 7600 chars and notes the truncation', () => {
   expect(url.length).toBeLessThanOrEqual(7600);
   expect(decodeURIComponent(url)).toContain('truncated');
 });
+
+import { submitFeedback, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE } from '../src/feedback.js';
+
+function fakeFetch(status: number, json: unknown): typeof fetch {
+  return (async () =>
+    new Response(JSON.stringify(json), { status })) as unknown as typeof fetch;
+}
+
+test('201 from the relay is an ok result with issue url and number', async () => {
+  const r = await submitFeedback(
+    submission(),
+    'https://example.test/api/feedback',
+    fakeFetch(201, { issueNumber: 42, issueUrl: 'https://github.com/farandclose/markwise/issues/42' })
+  );
+  expect(r).toEqual({
+    kind: 'ok',
+    issueNumber: 42,
+    issueUrl: 'https://github.com/farandclose/markwise/issues/42',
+  });
+});
+
+test('the request carries the client header and JSON body', async () => {
+  let captured: { url: string; init: RequestInit } | null = null;
+  const spy = (async (url: unknown, init: unknown) => {
+    captured = { url: String(url), init: init as RequestInit };
+    return new Response(JSON.stringify({ issueNumber: 1, issueUrl: 'u' }), { status: 201 });
+  }) as unknown as typeof fetch;
+  await submitFeedback(submission(), 'https://example.test/api/feedback', spy);
+  expect(captured!.url).toBe('https://example.test/api/feedback');
+  const headers = captured!.init.headers as Record<string, string>;
+  expect(headers[CLIENT_HEADER_NAME]).toBe(CLIENT_HEADER_VALUE);
+  const body = JSON.parse(String(captured!.init.body)) as { answers: { tryingTo: string } };
+  expect(body.answers.tryingTo).toBe('review a plan my agent wrote');
+});
+
+test('400 maps to invalid with the server message', async () => {
+  const r = await submitFeedback(submission(), 'e', fakeFetch(400, { error: 'feedback too short' }));
+  expect(r).toEqual({ kind: 'invalid', message: 'feedback too short' });
+});
+
+test('429 maps to unavailable', async () => {
+  const r = await submitFeedback(submission(), 'e', fakeFetch(429, { error: 'rate limit' }));
+  expect(r.kind).toBe('unavailable');
+});
+
+test('a network error maps to unavailable', async () => {
+  const boom = (async () => {
+    throw new Error('ECONNREFUSED');
+  }) as unknown as typeof fetch;
+  const r = await submitFeedback(submission(), 'e', boom);
+  expect(r.kind).toBe('unavailable');
+});
+
+test('201 with an unreadable body maps to unavailable', async () => {
+  const weird = (async () => new Response('not json', { status: 201 })) as unknown as typeof fetch;
+  const r = await submitFeedback(submission(), 'e', weird);
+  expect(r.kind).toBe('unavailable');
+});
