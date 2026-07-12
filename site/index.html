@@ -547,6 +547,7 @@
   .modal-copy.ok .ico-clip{display:none}
   .modal-copy.ok .ico-check{display:inline-block}
   .modal-hint{font-size:.88rem;color:var(--dim);margin:0}
+  .modal-hint + .modal-hint{margin-top:.4rem}
   .modal .copy-note{margin:0;min-height:0}
   .modal .copy-note:not(:empty){margin:.6rem 0 0}
   @keyframes scrimIn{from{opacity:0}to{opacity:1}}
@@ -816,7 +817,7 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
       <h2>Fair questions</h2>
       <dl class="ask-list">
         <div class="ask"><dt>Why not Google Docs or Notion?</dt><dd>Your doc leaves the repo and the agent loses it - truth moves out of the file. Markwise keeps the review inside the markdown, where the document lives.</dd></div>
-        <div class="ask"><dt>Do the markers junk up my file?</dt><dd>Review state hides in HTML comments. GitHub, VS Code, and every normal renderer show the document clean. <code>markwise export</code> writes a copy with every trace stripped; 24 lint rules guard the format.</dd></div>
+        <div class="ask"><dt>Do the markers junk up my file?</dt><dd>Review state hides in HTML comments. GitHub, VS Code, and every normal renderer show the document clean. <code>markwise export</code> writes a copy with every trace stripped; 31 lint rules guard the format.</dd></div>
         <div class="ask"><dt>What does my agent need?</dt><dd>Nothing special. <code>markwise prompt</code> bundles the doc and every open note into a plain-text block any model can read. No plugin, no API, no lock-in.</dd></div>
         <div class="ask"><dt>What are the limits today?</dt><dd>One file per preview, one reviewer, on localhost. A review surface, not a collaboration server. The protocol is v1; <code>markwise lint</code> is the compatibility guarantee.</dd></div>
       </dl>
@@ -853,8 +854,8 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
       </div>
       <figure class="proof-shot">
         <img src="assets/previewer-light.png" width="1200" height="788" loading="lazy"
-          alt="The Markwise previewer: a launch plan open in the browser with an anchored comment thread and a suggested edit shown inline">
-        <figcaption>The real previewer: <code>markwise preview launch-plan.md</code>, on localhost.</figcaption>
+          alt="The Markwise previewer: a product brief open in the browser with anchored comments and suggested edits shown in the notes rail">
+        <figcaption>The real previewer: <code>markwise preview</code> on localhost, with anchored comments and suggested edits in the notes rail.</figcaption>
       </figure>
       <p class="proof-row">v0.3.0 on npm &middot; MIT license &middot; 160+ unit tests and a browser e2e suite &middot; nothing leaves your machine</p>
     </div>
