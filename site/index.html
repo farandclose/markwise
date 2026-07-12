@@ -557,7 +557,7 @@
     <div class="shell hero-in">
       <div>
         <h1>The <span class="hl-wrap"><span class="hl">review layer</span></span> for agent-written markdown.</h1>
-        <p class="sub">Your agent writes the doc.<br>You comment and suggest edits on the exact text.<br><b>Your agent reads every note, acts, and answers.</b></p>
+        <p class="sub">Your agent writes the doc.<br>You comment and suggest edits on the exact text.<br><b>Your agent reads every note, acts, and answers - saved inside the file.</b></p>
         <div class="paste paste-cta">
           <p class="paste-frame">Paste this prompt into Claude Code, Codex, or any coding agent.</p>
           <p class="cmd" id="install-cmd">Install Markwise for me with <code>npm i -g markwise</code>, then run <code>markwise agent-setup</code> and follow what it prints.</p>
@@ -571,7 +571,7 @@
         <div class="hero-caption" aria-hidden="true">
           <span class="hcap" data-i="0">Your agent writes the doc.</span>
           <span class="hcap" data-i="1">You comment and suggest edits on the exact text.</span>
-          <span class="hcap" data-i="2">Your agent reads every note, acts, and answers.</span>
+          <span class="hcap" data-i="2">Your agent reads every note, acts, and answers - saved inside the file.</span>
         </div>
         <div class="hero-win" data-doc="resolved" aria-hidden="true">
           <div class="hero-screen">
@@ -1086,7 +1086,14 @@ Partner pricing holds through launch<span class="mk">&lt;!-- mw:<span class="id"
       at(pressAt + 4250, function(){ win.classList.add('curtain'); });
       at(pressAt + 4850, function(){ win.classList.remove('term-up'); win.setAttribute('data-doc','resolved'); });
       at(pressAt + 5100, function(){ win.classList.remove('curtain'); });
-      at(pressAt + 5800, function(){ if(replay) replay.classList.add('show'); });
+      // settle: the show is over - hand the stage back to the static page.
+      // Removing is-animating restores the .sub subhead (and returns it to the
+      // accessibility tree) and hides the caption track; Replay re-arms everything.
+      at(pressAt + 5800, function(){
+        hero.classList.remove('is-animating');
+        capOut();
+        if(replay) replay.classList.add('show');
+      });
     }
 
     if(!reduced && wide && 'IntersectionObserver' in window){
