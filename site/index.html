@@ -39,6 +39,8 @@
     --term:#111317; --term-2:#191c21; --term-ink:#d3d6da; --term-dim:#8a8e94;
     /* document mockup surface: the app's warm Sepia paper (reused from src/preview). Page + UI chrome above stay neutral. */
     --paper:#e7d7b2; --paper-line:#d3bf95; --paper-line-2:#8a7b4f; --paper-ink:#332b16; --paper-soft:#635733;
+    /* AA text-on-sepia tokens: darkened one step for >=4.5:1; surfaces unchanged */
+    --paper-title:#5a4e28; --gold-text:#7a570f; --green-text:#2e5c3a; --red-deep:#963a2b;
     /* diff language: the only chroma on the page (deletion / insertion / comment-mark) */
     --gold:#e8b04b; --gold-deep:#8f671b; --green:#8fc97e; --green-deep:#3f7d4e; --green-ink:#27502f;
     --red:#b04a3a; --red-soft:rgba(176,64,52,.20); --mark:rgba(196,140,28,.46);
@@ -173,7 +175,7 @@
     box-shadow:0 30px 70px rgba(23,23,18,.18)}
   .win-title{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;
     font-family:var(--mono);font-size:.68rem;letter-spacing:.06em}
-  .hero-win .win-title{color:#635733;background:#ddca9f;
+  .hero-win .win-title{color:var(--paper-title);background:#ddca9f;
     border-bottom:1px solid #d3bf95}
   /* the curtain: blur lives on the screen stack so chrome/shadow stay crisp; screen
      swaps happen WHILE engaged, hidden from the viewer */
@@ -184,7 +186,7 @@
   .hero-doc{position:relative;padding:1.15rem 1.25rem 1.35rem;min-height:15.5rem;
     display:flex;flex-direction:column;font-family:var(--serif);color:var(--paper-ink)}
   .hero-h{font-weight:700;font-size:1.02rem;margin:0 0 .55rem}
-  .hero-h .hash{font-family:var(--mono);font-size:.72rem;color:var(--paper-line-2);margin-right:.4rem}
+  .hero-h .hash{font-family:var(--mono);font-size:.72rem;color:var(--paper-soft);margin-right:.4rem}
   .hero-p{font-size:.95rem;line-height:1.72;margin:0}
   .hero-anchor .o,.hero-anchor .n{border-radius:3px;padding:0 .1em;
     transition:background .45s var(--ease-q),color .45s var(--ease-q)}
@@ -201,8 +203,8 @@
   .hero-thread{margin-top:1.05rem}
   .hero-card{background:#f3e8cd;border:1px solid #d3bf95;border-radius:10px;
     padding:.5rem .72rem;font-family:var(--sans);font-size:.82rem;line-height:1.5;color:var(--paper-ink)}
-  .hero-card .who{font-family:var(--mono);font-size:.56rem;letter-spacing:.13em;
-    display:block;margin:0 0 .2rem;color:var(--gold-deep)}
+  .hero-card .who{font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;
+    display:block;margin:0 0 .2rem;color:var(--gold-text)}
   .hero-card p{margin:0}
   .hero.is-animating .hero-card{opacity:0;transform:translateY(8px);visibility:hidden;
     transition:opacity .45s var(--ease-q),transform .45s var(--ease-q),visibility .45s}
@@ -219,7 +221,7 @@
   /* action area: hand-off (visible during clean/commenting) swaps to an "addressed" chip when resolved */
   .hero-act{align-self:stretch;position:relative;margin-top:auto;height:2.05rem}
   .hero-handoff,.hero-addressed{position:absolute;right:0;bottom:0;display:inline-flex;align-items:center;gap:.4rem}
-  .hero-handoff{font-family:var(--sans);font-size:.74rem;font-weight:600;color:var(--green-deep);
+  .hero-handoff{font-family:var(--sans);font-size:.74rem;font-weight:600;color:var(--green-text);
     background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.42);border-radius:8px;
     padding:.42rem .8rem;cursor:default;opacity:0;transform:translateY(6px);visibility:hidden;
     transition:opacity .4s var(--ease-q),transform .12s var(--ease-q),visibility .4s,
@@ -229,7 +231,7 @@
     opacity:1;transform:none;visibility:visible}
   .hero-handoff.is-clicking{transform:scale(.95);
     background:var(--green-deep);border-color:var(--green-deep);color:#fff}
-  .hero-addressed{font-family:var(--mono);font-size:.62rem;letter-spacing:.09em;color:var(--green-deep);
+  .hero-addressed{font-family:var(--mono);font-size:.68rem;letter-spacing:.09em;color:var(--green-text);
     background:rgba(63,125,78,.08);border:1px solid rgba(63,125,78,.38);border-radius:999px;
     padding:.34rem .72rem;opacity:0;visibility:hidden;transition:opacity .4s var(--ease-q),visibility .4s}
   .hero-win[data-doc="resolved"] .hero-addressed{opacity:1;visibility:visible}
@@ -336,16 +338,16 @@
     background:#ddca9f;border-bottom:1px solid #d3bf95}
   .hw-brand{font-family:var(--display);font-weight:800;font-size:.84rem;color:var(--ink);letter-spacing:-.01em}
   .hw-brand i{font-style:normal;color:var(--gold-deep)}
-  .hw-file{font-family:var(--mono);font-size:.7rem;color:var(--paper-line-2);letter-spacing:.03em}
+  .hw-file{font-family:var(--mono);font-size:.7rem;color:var(--paper-title);letter-spacing:.03em}
   .hw-handoff{margin-left:auto;font-family:var(--sans);font-size:.68rem;font-weight:600;
-    color:var(--dim);background:transparent;border:1px solid var(--hairline);border-radius:7px;
+    color:var(--paper-title);background:transparent;border:1px solid var(--hairline);border-radius:7px;
     padding:.3rem .6rem;cursor:default;white-space:nowrap;
     transition:transform .12s ease,background .2s ease,color .2s ease,border-color .2s ease}
   .hw-handoff.is-clicking{transform:scale(.94);background:var(--ink);border-color:var(--ink);color:#fff}
 
   .hw-body{position:relative;padding:1.3rem 1.45rem;min-height:17.5rem;display:flex;flex-direction:column}
   .hw-h{font-weight:700;font-size:1.1rem;margin:0 0 .55rem;color:var(--paper-ink)}
-  .hw-h .hash{font-family:var(--mono);font-size:.76rem;color:var(--paper-line-2);margin-right:.4rem}
+  .hw-h .hash{font-family:var(--mono);font-size:.76rem;color:var(--paper-soft);margin-right:.4rem}
   .hw-p{font-size:1rem;line-height:1.75;margin:0}
   .hw-anchor .o,.hw-anchor .n{border-radius:3px;padding:0 .1em;transition:background .35s,color .35s}
   .hw-anchor .n{display:none}
@@ -376,9 +378,9 @@
     opacity:0;transform:translateY(8px);visibility:hidden;
     transition:opacity .35s ease,transform .35s ease,visibility .35s}
   .hw-card p{margin:0}
-  .hw-card .who{font-family:var(--mono);font-size:.58rem;letter-spacing:.13em;display:block;margin:0 0 .22rem}
-  .hw-card.you .who{color:var(--gold-deep)}
-  .hw-card.agent .who{color:var(--green-deep)}
+  .hw-card .who{font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;display:block;margin:0 0 .22rem}
+  .hw-card.you .who{color:var(--gold-text)}
+  .hw-card.agent .who{color:var(--green-text)}
   .hw-card.agent{margin-left:1rem}
   /* step 2: comment appears (after the bubble) */
   .how-win[data-step="2"] .hw-card.you{opacity:1;transform:none;visibility:visible;transition-delay:.5s}
@@ -399,7 +401,7 @@
     transition:opacity .3s ease,visibility .3s,transform .12s ease}
   .hw-resolve.is-clicking{transform:scale(.93)}
   .hw-resolved{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--mono);
-    font-size:.64rem;letter-spacing:.1em;color:var(--green-deep);background:rgba(63,125,78,.08);
+    font-size:.68rem;letter-spacing:.1em;color:var(--green-text);background:rgba(63,125,78,.08);
     border:1px solid rgba(63,125,78,.35);border-radius:999px;padding:.3rem .7rem;
     opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s}
   .how-win[data-step="4"] .hw-resolved{opacity:1;visibility:visible}
@@ -431,15 +433,15 @@
     border-bottom:1px solid var(--paper-line);font-family:var(--mono);font-size:.78rem;letter-spacing:.05em}
   .fdots{display:flex;gap:.42rem}
   .fdots i{width:.72rem;height:.72rem;border-radius:50%;background:rgba(80,58,12,.22)}
-  .ffile{color:#635733}
+  .ffile{color:var(--paper-title)}
   .flabel{margin-left:auto;font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;
-    color:var(--paper-line-2);font-weight:500}
+    color:var(--paper-title);font-weight:500}
   .fbody{padding:1.55rem 2.3rem;min-height:17rem;flex:1}
   /* clean face: serif paper document */
   .fdoc{font-family:var(--serif);color:var(--paper-ink);max-width:42rem}
   .fdoc .fh{font-weight:700;font-size:1.34rem;margin:0 0 .7rem}
   .fdoc p + .fh{margin-top:1.35rem}
-  .fdoc .fh .hash{font-family:var(--mono);font-size:.86rem;color:var(--paper-line-2);margin-right:.45rem}
+  .fdoc .fh .hash{font-family:var(--mono);font-size:.86rem;color:var(--paper-soft);margin-right:.45rem}
   .fdoc p{font-size:1.16rem;line-height:1.78;margin:0 0 .82rem}
   .fdoc p:last-child{margin-bottom:0}
   .an{border-radius:3px;padding:0 .12em}
@@ -449,11 +451,11 @@
   .an.rep .n{margin-left:.3em}
   /* in-file face: the raw markdown bytes */
   .fraw{font-family:var(--mono);font-size:.9rem;line-height:1.72;white-space:pre-wrap;margin:0;color:var(--paper-ink)}
-  .fraw .mk{color:var(--paper-line-2)}
+  .fraw .mk{color:var(--paper-soft)}
   .fraw .blk{color:var(--paper-soft)}
-  .fraw .k{color:var(--gold-deep)}
-  .fraw .v{color:var(--green-deep)}
-  .fraw .id{color:var(--red);font-weight:600}
+  .fraw .k{color:var(--gold-text)}
+  .fraw .v{color:var(--green-text)}
+  .fraw .id{color:var(--red-deep);font-weight:600}
   .fraw .hl{background:var(--mark);border-radius:2px;padding:0 .1em}
   .fnote{text-align:center;font-size:1rem;color:var(--dim);max-width:44em;margin:.9rem auto 0}
   .fnote b{color:var(--ink);font-weight:600}
@@ -507,7 +509,7 @@
   .foot-meta{font-size:.88rem;color:var(--dim)}
   .foot-meta a{color:var(--dim)}
   .foot-chip{display:inline-flex;align-items:center;gap:.45rem;font-family:var(--mono);
-    font-size:.68rem;letter-spacing:.1em;color:var(--green-deep);
+    font-size:.68rem;letter-spacing:.1em;color:var(--green-text);
     background:rgba(63,125,78,.07);border:1px solid rgba(63,125,78,.3);
     border-radius:999px;padding:.3rem .75rem}
 
