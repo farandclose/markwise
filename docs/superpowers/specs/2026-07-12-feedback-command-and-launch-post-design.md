@@ -81,9 +81,12 @@ it at `https://markwise.dev/api/feedback` alongside the static site.
     `CLI feedback` if Q1 is empty.
   - Body: the three Q/A sections, metadata line, and optional contact line.
   - Label: `cli-feedback` (label created in the repo as part of rollout).
-- GitHub credential: fine-grained personal access token from a dedicated
-  machine account (`markwise-bot` or similar), scoped to the single repo with
-  Issues read/write only. Stored as a Vercel env var (`FEEDBACK_GITHUB_TOKEN`).
+- GitHub credential: classic personal access token with `public_repo` scope
+  from a dedicated machine account (`markwise-bot` or similar). Fine-grained
+  PATs cannot target a repo the token owner does not own, so classic is the
+  workable v1; blast radius is minimal because the bot account owns no repos -
+  the token can only do what any GitHub account can do on public repos (file
+  issues, comment). Stored as a Vercel env var (`FEEDBACK_GITHUB_TOKEN`).
   GitHub permits one machine account per person. Migrating to a GitHub App is
   deferred hardening, not v1.
 
