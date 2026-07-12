@@ -108,6 +108,13 @@ test('different IPs have independent limits', async () => {
   expect((await handleFeedback(req({ ip: '5.6.7.8' }), d)).status).toBe(201);
 });
 
+test('an unreadable GitHub 201 reply maps to 502', async () => {
+  const gh = (async () => new Response('not json', { status: 201 })) as unknown as typeof fetch;
+  const r = await handleFeedback(req(), deps({ fetchImpl: gh }));
+  expect(r.status).toBe(502);
+  expect(r.body).toEqual({ error: 'GitHub returned an unreadable reply' });
+});
+
 test('GitHub failure maps to 502, and a validation failure never reaches GitHub', async () => {
   const gh500 = (async () => new Response('{}', { status: 500 })) as unknown as typeof fetch;
   expect((await handleFeedback(req(), deps({ fetchImpl: gh500 }))).status).toBe(502);

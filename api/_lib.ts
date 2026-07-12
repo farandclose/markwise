@@ -133,6 +133,13 @@ export async function handleFeedback(req: RelayRequest, deps: RelayDeps): Promis
   if (res.status !== 201) {
     return { status: 502, body: { error: `GitHub rejected the issue (${res.status})` } };
   }
-  const data = (await res.json()) as { number: number; html_url: string };
-  return { status: 201, body: { issueNumber: data.number, issueUrl: data.html_url } };
+  try {
+    const data = (await res.json()) as { number?: unknown; html_url?: unknown };
+    if (typeof data.number === 'number' && typeof data.html_url === 'string') {
+      return { status: 201, body: { issueNumber: data.number, issueUrl: data.html_url } };
+    }
+  } catch {
+    // fall through to the 502 below
+  }
+  return { status: 502, body: { error: 'GitHub returned an unreadable reply' } };
 }
