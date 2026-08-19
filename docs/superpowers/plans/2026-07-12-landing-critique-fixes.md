@@ -68,7 +68,7 @@ process.exit(fail ? 1 : 0);
 - [ ] **Step 1: Create the branch**
 
 ```bash
-cd /Users/saurabhmehta/Documents/imagineandbuild/markwise
+cd <repo-root>
 git checkout -b feat/landing-critique-fixes
 ```
 

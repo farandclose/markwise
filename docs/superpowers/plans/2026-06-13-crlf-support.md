@@ -12,7 +12,7 @@
 
 ## CRITICAL WORKSPACE NOTE
 
-All work happens in the worktree **`/Users/saurabhmehta/Documents/imagineandbuild/markwise-crlf`** on branch **`crlf-support`** (off `main`). The primary checkout (`.../markwise`) is on `feat/site-how-it-works` for another terminal - do NOT touch it. Deps are already installed here; baseline is green (180 tests). Paths below are relative to the worktree root.
+All work happens in the worktree **`<repo-parent>/markwise-crlf`** on branch **`crlf-support`** (off `main`). The primary checkout (`.../markwise`) is on `feat/site-how-it-works` for another terminal - do NOT touch it. Deps are already installed here; baseline is green (180 tests). Paths below are relative to the worktree root.
 
 ## File map
 
@@ -38,7 +38,7 @@ All work happens in the worktree **`/Users/saurabhmehta/Documents/imagineandbuil
 
 - [ ] **Step 1: Confirm location and branch**
 
-Run: `cd /Users/saurabhmehta/Documents/imagineandbuild/markwise-crlf && git rev-parse --abbrev-ref HEAD`
+Run: `cd <repo-parent>/markwise-crlf && git rev-parse --abbrev-ref HEAD`
 Expected: `crlf-support`
 
 - [ ] **Step 2: Confirm a clean green baseline**

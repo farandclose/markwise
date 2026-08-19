@@ -12,7 +12,7 @@
 
 ## CRITICAL WORKSPACE NOTE
 
-All work happens in the worktree **`/Users/saurabhmehta/Documents/imagineandbuild/markwise-fix-issues`** on branch **`fix-issues`**. The main folder (`.../markwise`) is a separate worktree on `feat/site-how-it-works` used by another terminal - do NOT touch it. Worktrees do not share `node_modules`, so this worktree needs its own `pnpm install` first. Paths below are relative to the worktree root.
+All work happens in the worktree **`<repo-parent>/markwise-fix-issues`** on branch **`fix-issues`**. The main folder (`.../markwise`) is a separate worktree on `feat/site-how-it-works` used by another terminal - do NOT touch it. Worktrees do not share `node_modules`, so this worktree needs its own `pnpm install` first. Paths below are relative to the worktree root.
 
 ## What this plan does NOT touch
 
@@ -40,7 +40,7 @@ All work happens in the worktree **`/Users/saurabhmehta/Documents/imagineandbuil
 
 - [ ] **Step 1: Confirm location and branch**
 
-Run: `cd /Users/saurabhmehta/Documents/imagineandbuild/markwise-fix-issues && git rev-parse --abbrev-ref HEAD`
+Run: `cd <repo-parent>/markwise-fix-issues && git rev-parse --abbrev-ref HEAD`
 Expected: `fix-issues`
 
 - [ ] **Step 2: Install dependencies in this worktree**
